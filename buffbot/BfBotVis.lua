@@ -603,8 +603,8 @@ function V.OpenCaster(index,listName,column,rowIndex)
     local summary=listName=='bpSummary';local name=summary and 'rxSummaryList' or 'rxOrderList'
     if V.wide then name=name..'Wide' end
     local rh=summary and (V.wide and 42 or 34) or (V.wide and 50 or 46)
-    local fraction=summary and (V.wide and .47 or .43) or (V.wide and .47 or .49)
-    local anchor=V.ListChoiceAnchor(name,rowIndex or index,rh,fraction,.22)
+    local fraction=summary and (V.wide and .47 or .43) or .45
+    local anchor=V.ListChoiceAnchor(name,rowIndex or index,rh,fraction,summary and .22 or (V.wide and .18 or .19))
     if V.popup=='menu' and U.choiceMode=='caster' and U.choiceRequest==row.request then return V.ClosePopup() end
     U.request=row.request;U.choiceName=row.name;U.choiceRequest,U.choicePreset=row.request,U.preset
     U.OpenChoices('caster',nil,nil,anchor)
@@ -639,13 +639,13 @@ function V.LayoutContent()
     a('rxSummaryHeadRemove',V.w-162,92,94,26)
     a('rxOrderList',68,158,width+28,V.h-254);a('rxOrderListWide',68,158,width+28,V.h-254)
     for i,key in ipairs({'Smart','Long','Custom','Undo'}) do a('rxOrder'..key,68+(i-1)*156,90,148,30) end
-    local ox=68;local orderWidths=wide and {3,3,27,14,19,7,2,2,23} or {3,4,27,15,22,7,3,3,16}
-    for i,key in ipairs({'Number','Icon','Name','Recipient','Caster','Duration','Move'}) do
+    local ox=68;local orderWidths=wide and {3,3,26,13,18,7,10,2,2,16} or {3,4,24,14,19,7,12,3,3,11}
+    for i,key in ipairs({'Number','Icon','Name','Recipient','Caster','Duration','Remaining','Move'}) do
         if i~=2 then
             local hw=width*orderWidths[i]/100-8
             local hx=ox+4
             if key=='Duration' then hw=math.max(hw,88);if not wide then hx=hx-10 end end
-            if key=='Move' then hx=hx+6;hw=width*(orderWidths[7]+orderWidths[8])/100-10 end
+            if key=='Move' then hx=hx+6;hw=width*(orderWidths[8]+orderWidths[9])/100-10 end
             a('rxOrderHead'..key,hx,130,hw,26)
         end
         ox=ox+width*orderWidths[i]/100

@@ -4330,6 +4330,18 @@ label
 }
 label
 {
+ name "rxOrderHeadRemaining"
+ area 0 0 100 30
+ text lua "BfBot.Plan.Text('Est. Left')"
+ text style "bvr_header"
+ text point 12
+ text align left center
+ ignoreEvents
+ enabled "BfBot.PartyUI.view=='order'"
+ tooltip lua "BfBot.PartyUI.OrderRemainingTip(0)"
+}
+label
+{
  name "rxOrderHeadMove"
  area 0 0 100 30
  text lua "BfBot.Plan.Text('Move')"
@@ -4397,7 +4409,7 @@ list
  }
  column
  {
-  width 27
+  width 24
   label
   {
    area 0 0 -1 46
@@ -4442,7 +4454,7 @@ list
  }
  column
  {
-  width 15
+  width 14
   label
   {
    area 0 0 -1 46
@@ -4483,7 +4495,7 @@ list
  }
  column
  {
-  width 22
+  width 19
   label
   {
    area 0 0 -1 46
@@ -4492,7 +4504,7 @@ list
   }
   label
   {
-   area 6 9 232 28
+   area 6 9 204 28
    enabled "bbPartyRequests[rowNumber]~=nil"
    bam "BFBPLAT"
    sequence lua "BfBot.Visual.SkinIndex()"
@@ -4516,7 +4528,7 @@ list
   }
   label
   {
-   area 52 9 139 28
+   area 52 9 111 28
    text lua "BfBot.Visual.CasterName(rowNumber)"
    text style "bvr_text"
    text point 14
@@ -4525,7 +4537,7 @@ list
   }
   label
   {
-   area 14 9 177 28
+   area 14 9 149 28
    text lua "BfBot.Visual.CasterName(rowNumber)"
    text style "bvr_text"
    text point 14
@@ -4534,7 +4546,7 @@ list
   }
   label
   {
-   area 218 15 16 16
+   area 190 15 16 16
    enabled "bbPartyRequests[rowNumber]~=nil"
    bam "BFBGLYPH"
    sequence lua "BfBot.Visual.Glyph('dropdown')"
@@ -4543,13 +4555,13 @@ list
   }
   label
   {
-   area 6 9 232 1
+   area 6 9 204 1
    enabled "bbPartyRequests[rowNumber]~=nil and BfBot.Visual.RequestError(rowNumber)"
    fill 224 83 63 230
   }
   label
   {
-   area 6 36 232 1
+   area 6 36 204 1
    enabled "bbPartyRequests[rowNumber]~=nil and BfBot.Visual.RequestError(rowNumber)"
    fill 224 83 63 230
   }
@@ -4561,13 +4573,13 @@ list
   }
   label
   {
-   area 237 9 1 28
+   area 209 9 1 28
    enabled "bbPartyRequests[rowNumber]~=nil and BfBot.Visual.RequestError(rowNumber)"
    fill 224 83 63 230
   }
   label
   {
-   area 198 16 14 14
+   area 170 16 14 14
    enabled "bbPartyRequests[rowNumber]~=nil and BfBot.Visual.RequestError(rowNumber)"
    bam "BFBGLYPH"
    sequence lua "BfBot.Visual.Glyph('warning')"
@@ -4596,6 +4608,30 @@ list
    text style "bvr_text"
    text point 14
    text align left center
+  }
+  label
+  {
+   area 0 45 -1 1
+   fill 176 138 74 32
+  }
+ }
+ column
+ {
+  width 12
+  label
+  {
+   area 0 0 -1 46
+   enabled "BfBot.Visual.RequestError(rowNumber)"
+   fill 224 83 63 18
+  }
+  label
+  {
+   area 4 0 -1 46
+   text lua "BfBot.PartyUI.OrderRemaining(rowNumber)"
+   text style "bvr_text"
+   text point 14
+   text align left center
+   tooltip lua "BfBot.PartyUI.OrderRemainingTip(rowNumber)"
   }
   label
   {
@@ -4655,7 +4691,7 @@ list
  }
  column
  {
-  width 16
+  width 11
   label
   {
    area 0 0 -1 46
@@ -4664,7 +4700,7 @@ list
   }
   label
   {
-   area 141 9 28 28
+   area 85 9 28 28
    bam "BFBACT"
    sequence 1
    frame 0
@@ -4733,7 +4769,7 @@ list
  }
  column
  {
-  width 27
+  width 26
   label
   {
    area 0 0 -1 50
@@ -4778,7 +4814,7 @@ list
  }
  column
  {
-  width 14
+  width 13
   label
   {
    area 0 0 -1 50
@@ -4819,7 +4855,7 @@ list
  }
  column
  {
-  width 19
+  width 18
   label
   {
    area 0 0 -1 50
@@ -4941,6 +4977,30 @@ list
  }
  column
  {
+  width 10
+  label
+  {
+   area 0 0 -1 50
+   enabled "BfBot.Visual.RequestError(rowNumber)"
+   fill 224 83 63 18
+  }
+  label
+  {
+   area 4 0 -1 50
+   text lua "BfBot.PartyUI.OrderRemaining(rowNumber)"
+   text style "bvr_text"
+   text point 14
+   text align left center
+   tooltip lua "BfBot.PartyUI.OrderRemainingTip(rowNumber)"
+  }
+  label
+  {
+   area 0 49 -1 1
+   fill 176 138 74 32
+  }
+ }
+ column
+ {
   width 2
   label
   {
@@ -4991,7 +5051,7 @@ list
  }
  column
  {
-  width 23
+  width 16
   label
   {
    area 0 0 -1 50
@@ -5000,7 +5060,7 @@ list
   }
   label
   {
-   area 367 11 28 28
+   area 244 11 28 28
    bam "BFBACT"
    sequence 1
    frame 0

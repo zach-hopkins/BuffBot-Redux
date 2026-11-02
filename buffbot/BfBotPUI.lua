@@ -121,6 +121,7 @@ function U.Refresh(fresh)
     P.EnsureDependencies(U.snapshot,U.preset)
     P.ApplyOrder(U.snapshot,U.preset,P.EstimateCast)
     U.plan = P.Assign(U.snapshot, U.preset.requests)
+    U.remaining,U.estimatedFinish=P.EstimateRemaining(U.snapshot,U.preset.requests,U.plan,U.preset.orderMode)
     bbPartyName = U.preset.name
     bbPartyBuffs, bbPartyRequests, bbPartyTargets = {}, {}, {}
     for key, group in pairs(U.snapshot.groups) do
@@ -871,6 +872,15 @@ function U.OrderDuration(index)
     local d=U.plan.decisions[index]
     return d and d.source and U.Duration(d.duration) or "—"
 end
+function U.OrderRemaining(index)
+    local n=U.remaining and U.remaining[index]
+    if n==nil then return '—' end
+    if n==0 then return P.Text('Expired')end
+    return U.Duration(n==-1 and -1 or math.floor(n))
+end
+function U.OrderRemainingTip(index)
+    return P.Text('Estimated duration left when the whole list finishes. Casting, aura and Smart delays are included; movement, item handoffs and failed casts can change it.')
+end
 function U.OrderName(index)
     local row=bbPartyRequests[index]
     local d=U.plan.decisions[index]
@@ -918,9 +928,9 @@ function U.OrderClick(column)
     if not row then return end
     U.request=row.request
     if column==5 then U.OpenCaster(index,"bpPlan",.55)
-    elseif column==7 and U.CanMove(index,-1) then U.Move(-1)
-    elseif column==8 and U.CanMove(index,1) then U.Move(1)
-    elseif column==9 then U.Remove() end
+    elseif column==8 and U.CanMove(index,-1) then U.Move(-1)
+    elseif column==9 and U.CanMove(index,1) then U.Move(1)
+    elseif column==10 then U.Remove() end
 end
 function U.SummaryClick(column)
     local row=bbPartySummary[bbPartySummarySelection]

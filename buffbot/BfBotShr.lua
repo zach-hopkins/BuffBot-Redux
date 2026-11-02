@@ -399,11 +399,25 @@ function S.TickLoan(state,wall)
     end
     local j=state.transfer
     if not j then releaseNativeLoan();return end
+    -- Native equipment swapping can temporarily hide or duplicate the item
+    -- in slot enumeration. Wait for its existing recovery journal before
+    -- interpreting that intermediate inventory as changed gear.
+    if borrower and BfBot.Persist.GetItemSwap(borrower)then return end
+    -- GiveItem can briefly remove the instance before attaching it to the
+    -- destination. Keep its custody journal through that native handoff;
+    -- never reconstruct an item or reset its charges.
+    if not location and owner and borrower and sameArea(owner,borrower)
+        and (loan.phase=='receiving' or loan.phase=='return')then
+        local now=BfBot.Exec._GetGameTime()
+        if now then
+            loan.missingSince=loan.missingSince or now
+            if now-loan.missingSince<30 then return end -- two game seconds
+        end
+    elseif location then loan.missingSince=nil end
     if not owner or not borrower or not location or not sameArea(owner,borrower)
         or not matching(location.item,j)then
         failed('gear changed or character unavailable; automatic return paused');return
     end
-    if BfBot.Persist.GetItemSwap(borrower)then return end
     if loan.phase=='receiving'and not loan.cancelled and location.key==j.borrower then
         if BfBot.Scan._NativeCanWearItem(borrower,location.item)~=true then
             failed('recipient can no longer wear this item')

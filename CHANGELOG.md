@@ -1,5 +1,28 @@
 # Changelog
 
+## Unreleased
+
+- Add an Est. Left column to Order, estimating remaining duration after the
+  whole list finishes using concurrent caster lanes, aura and Smart delays.
+  Show Expired when a buff is predicted to run out during preparation.
+- Smart Order puts Spell Deflection/Turning after incoming buffs, including
+  party spells delivered through single-target children. Reproduced Aerie's
+  Spell Ineffective with Righteous Wrath and Spell Deflection at zero magic
+  resistance; delaying Deflection removed the rejection in a full native run.
+
+- Keep automatic source reservations stable when Smart Order is recalculated.
+  Use saved request priorities rather than the current sorted row positions.
+- Place summon creation before its dependent casts and give it the priority of
+  the longest buff it unlocks, so Vhailor's Helm does not strand long clone buffs
+  behind short buffs.
+- Start permanent and five-minute-or-longer buffs promptly. Retain deliberate
+  timing for short buffs, while avoiding gear custody during a scheduled wait.
+- Wait for native equipment swaps before validating a borrowed item's custody,
+  avoiding false changed-gear failures during an intermediate slot state.
+- Allow a bounded two-game-second native handoff gap while keeping the saved
+  return journal, rather than canceling a loan between GiveItem's removal and
+  destination attachment.
+
 ## v1.10.1-redux-beta.6 — 31 October 2026
 
 - Offer Recommended (with LuaJIT setup helper) and Without LuaJIT downloads,

@@ -680,7 +680,7 @@ function BfBot.Exec._BuildQueue(userQueue, qcMode)
                     resref=entry.spell,spellName=entry.spellName or entry.spell,
                     targetName=tostring(entry.plannedTarget or entry.target),kind='itm',cheat=false,
                     raw=entry,deferredLoan=true,plannedActor=entry.plannedActor,plannedTarget=entry.plannedTarget,
-                    planIndex=entry.planIndex,invisibilityTarget=entry.invisibilityTarget,
+                    planIndex=entry.planIndex,invisibilityTarget=entry.invisibilityTarget,protectionTarget=entry.protectionTarget,
                     isAoE=entry.isAoE,smartTiming=entry.smartTiming,timing=entry.timing})
                 totalEntries=totalEntries+1
             end
@@ -698,7 +698,7 @@ function BfBot.Exec._BuildQueue(userQueue, qcMode)
                 kind='spl',cheat=false,raw=entry,deferred=true,future=entry.future,
                 plannedActor=entry.plannedActor,plannedTarget=entry.plannedTarget,
                 planIndex=entry.planIndex,providerPlanIndex=entry.providerPlanIndex,
-                invisibilityTarget=entry.invisibilityTarget,isAoE=entry.isAoE,
+                invisibilityTarget=entry.invisibilityTarget,isAoE=entry.isAoE,protectionTarget=entry.protectionTarget,
                 smartTiming=entry.smartTiming,timing=entry.timing})
             totalEntries=totalEntries+1
             goto continue
@@ -852,6 +852,7 @@ function BfBot.Exec._BuildQueue(userQueue, qcMode)
                     plannedActor = entry.plannedActor,
                     plannedTarget = entry.plannedTarget,
                     planIndex = entry.planIndex, invisibilityTarget = entry.invisibilityTarget,
+                    protectionTarget=entry.protectionTarget,
                     smartTiming = entry.smartTiming, timing = entry.timing,
                     plannedItemSlot = entry.plannedItemSlot,
                     itemResref = spellData.itemResref,
@@ -1478,6 +1479,10 @@ function BfBot.Exec._ProcessCasterEntry(key, index)
     if caster.queue[index]then caster.index=index end
     local pending=caster.queue[index]
     if pending and pending.deferredLoan then
+        -- Do not take custody of gear while this cast is still deliberately
+        -- delayed. Holding its owner here can stall the very lane that the
+        -- JIT schedule is waiting for.
+        if BfBot.Timing and BfBot.Timing.Gate(key,index,pending)then return end
         local old=pending
         local materialized,status=BfBot.Share.MaterializeLoan(key,caster,pending)
         if status=='wait'then return end

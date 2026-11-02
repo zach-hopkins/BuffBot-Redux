@@ -4,6 +4,109 @@ from test_party_planner import lua
 from test_party_dashboard import dashboard
 
 
+def test_end_duration_uses_concurrent_lanes_and_reports_expired_buffs(lua):
+    assert lua.execute('''
+      local s=snapshot();source(s,'SHORT','A',4,'s',1);source(s,'LAST','A',60,'l',1)
+      source(s,'PARALLEL','B',600,'p',1);source(s,'PERM','B',-1,'perm',1)
+      local requests={request('SHORT','A','A'),request('LAST','A','A'),request('PARALLEL','B','B'),request('PERM','B','B')}
+      local p=P.Assign(s,requests)
+      local left,finish=P.EstimateRemaining(s,requests,p,'custom',function()return {release=15}end)
+      return finish==105 and left[1]==0 and left[2]==60 and left[3]==594 and left[4]==-1
+    ''')
+
+
+def test_end_duration_uses_smart_delays_and_excludes_missing_casts(lua):
+    assert lua.execute('''
+      local s=snapshot();source(s,'SHORT','A',60,'s',1)
+      source(s,'LONG','B',600,'l',1)
+      local reqs={request('SHORT','A','A'),request('LONG','B','B'),request('MISSING','A','A')}
+      local p=P.Assign(s,reqs)
+      local function cost(source)return {release=source.actor=='A'and 15 or 90}end
+      local smart=P.EstimateRemaining(s,reqs,p,'smart',cost)
+      local custom=P.EstimateRemaining(s,reqs,p,'custom',cost)
+      return smart[1]==60 and custom[1]==55 and smart[2]==600 and smart[3]==nil
+    ''')
+
+
+def test_spell_deflection_follows_incoming_party_buffs_but_not_self_casts(lua):
+    assert lua.execute('''
+      local s=snapshot();local shield=source(s,'DEFLECT','A',300,'shield',1)
+      source(s,'WRATH','B',90,'wrath',1,{aoe=true});source(s,'SELF','A',60,'self',1)
+      P.DeliversSpellProtection=function(row)return row==shield.row end
+      local d,w,self=request('DEFLECT','A','A'),request('WRATH','party','B'),request('SELF','A','A')
+      local sorted=P.SortRequests(s,{d,self,w},'smart',function()return {release=15}end)
+      local positions={};for i,r in ipairs(sorted)do positions[r]=i end
+      return positions[w]<positions[d]and positions[d]<positions[self]
+    ''')
+
+
+def test_saved_priority_keeps_auto_sources_stable_across_sorting(lua):
+    assert lua.execute('''
+      local s=snapshot();source(s,'BUFF','A',900,'a',1);source(s,'BUFF','B',600,'b',2)
+      source(s,'SHORT','A',60,'short',1)
+      local a,b,c=request('BUFF','A'),request('BUFF','B'),request('SHORT','A')
+      a.manual=1;b.manual=2;c.manual=3
+      local list={c,b,a}
+      for pass=1,12 do
+        list=P.SortRequests(s,list,pass%2==0 and 'smart' or 'long')
+        local plan=P.Assign(s,list)
+        for _,d in ipairs(plan.decisions)do
+          if d.request==a then assert(d.source.actor=='A')end
+          if d.request==b then assert(d.source.actor=='B')end
+        end
+      end
+      return list[1]==a and list[2]==b and list[3]==c
+    ''')
+
+
+def test_new_unranked_request_does_not_steal_existing_source_priority(lua):
+    assert lua.execute('''
+      local s=snapshot();source(s,'BUFF','A',900,'a',1);source(s,'BUFF','B',600,'b',1)
+      local old,new=request('BUFF','A'),request('BUFF','B');old.manual=77
+      local plan=P.Assign(s,{old,new})
+      return plan.decisions[1].source.actor=='A'and plan.decisions[2].source.actor=='B'
+    ''')
+
+
+def test_short_summon_provider_inherits_long_buff_priority(lua):
+    assert lua.execute('''
+      local s=snapshot();local helm=source(s,'HELM','A',96,'helm',1)
+      source(s,'SHORT','A',60,'short',1)
+      local clone=source(s,'LONG','B',780,'clone',1)
+      local h,short,long=request('HELM','A','A'),request('SHORT','A','A'),request('LONG','A','B')
+      h.manual=3;short.manual=2;long.manual=1;clone.providerRequest=h
+      local list={long,short,h}
+      for pass=1,8 do
+        list=P.SortRequests(s,list,'smart',function()return {release=15}end)
+        assert(list[1]==h and list[2]==long and list[3]==short)
+        assert(P.OrderAllowed(s,list))
+      end
+      return true
+    ''')
+
+
+def test_auto_clone_assignment_and_dependencies_survive_repeated_smart_order(lua):
+    assert lua.execute('''
+      local s=snapshot();source(s,'HELM','A',96,'helm',1)
+      source(s,'BUFF','A',900,'owner',1)
+      local clone=source(s,'BUFF','B',780,'clone',1)
+      source(s,'SHORT','A',60,'short',1)
+      local first,second,h,short=request('BUFF','A'),request('BUFF','B'),request('HELM','A','A'),request('SHORT','A','A')
+      first.manual=1;second.manual=2;short.manual=3;h.manual=4;clone.providerRequest=h
+      local list={second,short,first,h}
+      for pass=1,12 do
+        list=P.SortRequests(s,list,'smart',function()return {release=15}end)
+        assert(P.OrderAllowed(s,list))
+        assert(list[1]==first and list[2]==h and list[3]==second and list[4]==short)
+        for _,d in ipairs(P.Assign(s,list).decisions)do
+          if d.request==first then assert(d.source.actor=='A')end
+          if d.request==second then assert(d.source==clone)end
+        end
+      end
+      return true
+    ''')
+
+
 def test_long_first_keeps_permanent_before_long_before_short(lua):
     assert lua.execute("""
       local s=snapshot();source(s,'SHORT','A',12,'s',1);source(s,'LONG','A',3600,'l',1);source(s,'PERM','A',-1,'p',1)

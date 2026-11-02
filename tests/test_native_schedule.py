@@ -23,6 +23,26 @@ def test_short_caster_finishes_with_long_caster_without_extending_plan(schedule)
         and s.jobs.haste.age==90
     ''')
 
+
+def test_long_buffs_start_promptly_while_short_tail_keeps_jit(schedule):
+    assert schedule.execute('''
+      local jobs={{id='longBuff',caster='A',release=15,eager=true},
+        {id='shortBuff',caster='A',release=15}}
+      for i=1,7 do jobs[#jobs+1]={id='cleric'..i,caster='B',release=15}end
+      local s=assert(T.Solve(jobs))
+      return s.jobs.longBuff.start==0 and s.jobs.shortBuff.start==540 and s.finish==555
+    ''')
+
+
+def test_spell_deflection_waits_for_other_caster_party_wrapper(schedule):
+    assert schedule.execute('''
+      local jobs=T.Constrain({
+        {id='deflect',caster='A',actor='A',target='A',protection=true,release=15,eager=true},
+        {id='wrath',caster='B',actor='B',target='party',party=true,release=90}})
+      local s=assert(T.Solve(jobs))
+      return s.jobs.wrath.finish<=s.jobs.deflect.start
+    ''')
+
 def test_targeted_buffs_precede_invisibility_even_when_that_extends_a_lane(schedule):
     assert schedule.execute('''
       local s=assert(T.Solve({

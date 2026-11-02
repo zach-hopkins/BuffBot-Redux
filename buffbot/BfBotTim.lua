@@ -17,7 +17,7 @@ end
 -- game times for work that already began, not estimates to move backward.
 -- Returns the earliest feasible finish with each unstarted job placed as late
 -- as its successors allow. Delaying a short lane never extends that finish.
-function T.Solve(jobs,now)
+function T.Solve(jobs,now,immediate)
     now=now or 0
     if type(jobs)~='table' or #jobs>256 or not finite(now) or now<0 then
         return nil,'Invalid timing input'
@@ -101,7 +101,7 @@ function T.Solve(jobs,now)
         local n=topology[i]
         local latest=finish-n.duration
         for id,weight in pairs(n.outgoing)do latest=math.min(latest,nodes[id].start-weight) end
-        n.start=n.job.fixedStart or math.max(n.earliest,latest)
+        n.start=n.job.fixedStart or ((immediate or n.job.eager) and n.earliest) or math.max(n.earliest,latest)
     end
     local result={finish=finish,order={},jobs={}}
     for _,n in ipairs(topology)do
@@ -136,6 +136,10 @@ function T.Constrain(input)
                     after.after[#after.after+1]=before.id
                 end
                 if target then j.after[#j.after+1]=other.id end
+                if j.protection and not other.protection and other.actor~=j.target
+                    and (other.party or other.target=='party' or other.target==j.target)then
+                    j.after[#j.after+1]=other.id
+                end
                 if j.ownerImage and other.actor==j.affects then j.after[#j.after+1]=other.id end
                 if j.provider and other.id==j.provider then j.after[#j.after+1]=other.id end
             end
@@ -180,10 +184,12 @@ function T.Begin(casters)
             local node={id=key..':'..index,caster=key,actor=e.plannedActor or key,
                 target=e.plannedTarget,rank=e.planIndex,spell=e.resref,
                 release=timing.release or T.AURA_TICKS,aura=timing.aura==true,
+                eager=timing.eager==true,
                 rawSegments=timing.rawSegments,
                 prerequisite=timing.prerequisite,affects=timing.affects or e.plannedTarget,
                 ownerImage=timing.ownerPrerequisite,providerIndex=e.providerPlanIndex,
                 invisible=e.invisibilityTarget~=nil,party=e.isAoE or e.plannedTarget=='party',
+                protection=e.protectionTarget~=nil,
                 index=index,key=key}
             run.nodes[#run.nodes+1]=node;run.byEntry[e]=node
             if e.planIndex then run.byPlan[e.planIndex]=node end

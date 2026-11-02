@@ -141,8 +141,9 @@ def order_page():
         action=f'{U}.UndoOrder()' if mode is None else f"{U}.SortOrder('{mode}')"
         available=f'{U}.CanUndoOrder()' if mode is None else f'{U}.CanSortOrder()'
         button('rxOrder'+key,action,f"{P}.Text('{text}')",frame=f"{U}.IsOrderMode('{mode}') and 2 or 0" if mode else '0',enabled=shown,bam_expr=f"{U}.IsOrderMode('{mode}') and 'BFBTAB' or 'BFBPLAT'" if mode else None,extra=[f'greyscale lua "not {available}"',f'tooltip lua "{P}.Text(\'{tip}\')"'])
-    for key,text in [('Number','#'),('Name','Buff'),('Recipient','Recipient'),('Caster','Caster'),('Duration','Duration'),('Move','Move'),('Remove','Remove')]:label('rxOrderHead'+key,f"{P}.Text('{text}')",'header',shown)
-    for wide,rh,widths,fw in [(False,46,[3,4,27,15,22,7,3,3,16],232),(True,50,[3,3,27,14,19,7,2,2,23],300)]:
+    for key,text in [('Number','#'),('Name','Buff'),('Recipient','Recipient'),('Caster','Caster'),('Duration','Duration'),('Remaining','Est. Left'),('Move','Move'),('Remove','Remove')]:
+        label('rxOrderHead'+key,f"{P}.Text('{text}')",'header',shown,extra=[f'tooltip lua "{U}.OrderRemainingTip(0)"'] if key=='Remaining' else [])
+    for wide,rh,widths,fw in [(False,46,[3,4,24,14,19,7,12,3,3,11],204),(True,50,[3,3,26,13,18,7,10,2,2,16],300)]:
         ROWHEIGHT=rh;emit('list\n{')
         column(widths[0],[cell([4,0,-1,rh],'tostring(rowNumber)','small')])
         column(widths[1],[cell([4,(rh-24)//2,24,24],extra=[f'icon lua "{U}.RequestIcon(rowNumber)"'])])
@@ -153,9 +154,10 @@ def order_page():
         column(widths[3],portraits)
         column(widths[4],caster_labels(rh,fw))
         column(widths[5],[cell([4,0,-1,rh],f'{U}.OrderDuration(rowNumber)')])
+        column(widths[6],[cell([4,0,-1,rh],f'{U}.OrderRemaining(rowNumber)',extra=[f'tooltip lua "{U}.OrderRemainingTip(rowNumber)"'])])
         for k,delta in enumerate([-1,1]):
-            column(widths[6+k],[cell([3,(rh-28)//2,28,28],extra=['bam "BFBARROW"',f'sequence {k}','frame 0','scaleToClip',f'greyscale lua "not {U}.CanMove(rowNumber,{delta})"',f'opacity lua "{U}.CanMove(rowNumber,{delta}) and 255 or 76"'])])
-        column(widths[8],[cell([widths[8]*(1764 if wide else 1124)//100-38,(rh-28)//2,28,28],extra=['bam "RGDXBT1"','sequence 1','frame 0','scaleToClip'])])
+            column(widths[7+k],[cell([3,(rh-28)//2,28,28],extra=['bam "BFBARROW"',f'sequence {k}','frame 0','scaleToClip',f'greyscale lua "not {U}.CanMove(rowNumber,{delta})"',f'opacity lua "{U}.CanMove(rowNumber,{delta}) and 255 or 76"'])])
+        column(widths[9],[cell([widths[9]*(1764 if wide else 1124)//100-38,(rh-28)//2,28,28],extra=['bam "RGDXBT1"','sequence 1','frame 0','scaleToClip'])])
         finish_list('rxOrderList'+('Wide' if wide else ''),'bbPartyRequests','bbPartyRequestSelection',f'{V}.OrderClick(cellNumber)',shown+f' and not {V}.Empty() and '+(f'{V}.wide' if wide else f'not {V}.wide'),rh)
     ROWERROR=False
 def popup_surface(prefix,menu):

@@ -105,3 +105,37 @@ def test_stop_during_native_loan_returns_without_spending_a_charge(parallel_loan
       return E._state=='stopped'and not S.liveLoan and not state.transfer
         and sprites[1].items[22].m_useCount1==2 and #itemUses==0
     ''')
+
+
+def test_native_swap_intermediate_inventory_does_not_cancel_a_loan(parallel_loan):
+    assert parallel_loan.execute('''
+      local S=BfBot.Share;local q=loanQueue();q={q[2]};assert(E.Start(q,0))
+      loanTick();assert(state.transfer and S.liveLoan.phase=='receiving')
+      BfBot.Persist.GetItemSwap=function(a)return a.swap end
+      local borrower=sprites[2];borrower.swap={};borrower.items[19]=borrower.items[18]
+      loanTick()
+      assert(not S.liveLoan.cancelled and not S.lastFailure and state.transfer and #itemUses==0)
+      borrower.items[19]=nil;borrower.swap=nil;loanTick()
+      return #itemUses==1 and S.liveLoan.phase=='using'and not S.lastFailure
+    ''')
+
+
+def test_native_handoff_can_be_briefly_absent_from_both_inventories(parallel_loan):
+    assert parallel_loan.execute('''
+      local S=BfBot.Share;local q=loanQueue();q={q[2]};assert(E.Start(q,0))
+      loanTick();assert(state.transfer and S.liveLoan.phase=='receiving')
+      local borrower=sprites[2];local item=borrower.items[18];borrower.items[18]=nil
+      loanTick();loanTick()
+      assert(not S.liveLoan.cancelled and not S.lastFailure and state.transfer and #itemUses==0)
+      borrower.items[18]=item;loanTick()
+      return #itemUses==1 and S.liveLoan.phase=='using'and not S.lastFailure
+    ''')
+
+
+def test_genuinely_missing_loan_still_fails_after_bounded_grace(parallel_loan):
+    assert parallel_loan.execute('''
+      local S=BfBot.Share;local q=loanQueue();q={q[2]};assert(E.Start(q,0))
+      loanTick();sprites[2].items[18]=nil;loanTick()
+      clock=clock+30;loanTick()
+      return S.liveLoan.cancelled and S.lastFailure~=nil and state.transfer~=nil and #itemUses==0
+    ''')

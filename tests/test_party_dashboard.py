@@ -527,12 +527,14 @@ def test_order_inline_actions_follow_selected_request_after_reordering(dashboard
         setup(s,{request('FIRST','A'),request('LAST','B')})
         bbPartyRequestSelection=1;rowNumber=99
         assert(not U.CanMove(1,-1) and U.CanMove(1,1))
-        U.OrderClick(8)
+        U.OrderClick(7) -- Estimated remaining duration is informational.
+        assert(U.preset.requests[1].group=='FIRST')
+        U.OrderClick(9)
         assert(U.preset.requests[2].group=='FIRST' and bbPartyRequestSelection==2)
         assert(not U.CanMove(2,1))
-        U.OrderClick(7)
+        U.OrderClick(8)
         assert(U.preset.requests[1].group=='FIRST' and bbPartyRequestSelection==1)
-        U.OrderClick(9)
+        U.OrderClick(10)
         return #U.preset.requests==1 and U.preset.requests[1].group=='LAST'
     ''')
 

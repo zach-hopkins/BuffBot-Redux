@@ -60,6 +60,24 @@ def test_custom_mode_keeps_immediate_parallel_native_dispatch(execution):
       return #actions==2 and actions[1].time==0 and actions[2].time==0 and T.run==nil
     ''')
 
+
+def test_scheduled_loan_does_not_take_custody_before_its_dispatch_time(execution):
+    assert execution.execute('''
+      local touched=0
+      BfBot.Share={internal=true,BeforeStep=function()return false end,
+        MaterializeLoan=function()touched=touched+1;return nil,'wait'end}
+      local old=E._BuildQueue
+      E._BuildQueue=function(...)
+        local casters,why,skips=old(...)
+        casters.p1[1].deferredLoan=true
+        return casters,why,skips
+      end
+      assert(E.Start(queue(true),0))
+      assert(touched==0)
+      clock=450;T.Pump()
+      return touched==1
+    ''')
+
 def test_unavailable_long_lane_does_not_leave_short_lane_waiting(execution):
     assert execution.execute('''
       skipLong=true;assert(E.Start(queue(true),0))

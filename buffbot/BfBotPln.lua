@@ -252,6 +252,7 @@ function P.Assign(snapshot, requests)
         end
         return false
     end
+    local allocationOrder={}
     for i, request in ipairs(requests) do
         if i > P.MAX_REQUESTS then break end
         local decision = { request = request }
@@ -263,14 +264,27 @@ function P.Assign(snapshot, requests)
             if ok then candidates[i][#candidates[i] + 1] = s else reason = why end
         end
         table.sort(candidates[i], function(a, b) return P.BetterSource(a, b, request) end)
+        decision.reason=reason
+        allocationOrder[#allocationOrder+1]=i
+    end
+    -- Allocation priority belongs to the saved request, not its current
+    -- display/casting position. Sorting must not move scarce sources between
+    -- recipients and invalidate the dependencies just calculated for them.
+    table.sort(allocationOrder,function(a,b)
+        local ar,br=requests[a].manual or math.huge,requests[b].manual or math.huge
+        return ar==br and a<b or ar<br
+    end)
+    for _,i in ipairs(allocationOrder)do
+        local request,decision=requests[i],result.decisions[i]
         if request.on == 0 then decision.reason = P.Text("Disabled")
         elseif not move(i, {}) then
-            decision.reason = #candidates[i] > 0 and P.Text("No unreserved uses") or reason
+            decision.reason = #candidates[i] > 0 and P.Text("No unreserved uses") or decision.reason
             result.missing = result.missing + 1
         end
     end
     for _, d in ipairs(result.decisions) do
         if d.source then
+            d.reason=nil
             d.duration = P.SourceDuration(d.source, d.request)
             result.used[d.source.pool] = (result.used[d.source.pool] or 0) + 1
         end
@@ -281,13 +295,15 @@ end
 -- Explicit plan-order tools. These never change requests, targets or caster locks.
 -- Smart order is a bounded heuristic, scored by the worst retained lifetime
 -- fraction after per-caster aura/release simulation, then total retained fraction.
-function P.CastAges(entries)
+function P.CastAges(entries,immediate)
     local jobs,phase,lastFence={},{},nil
     local ids={};for i,e in ipairs(entries)do if e.request then ids[e.request]=i end end
     for i,e in ipairs(entries)do
         local j={id=i,caster=e.caster,actor=e.actor,target=e.request and e.request.target or e.target,
             rank=e.index,release=e.release or 0,aura=e.aura,after={},
+            eager=e.duration==-1 or (e.duration or 0)>=300 or e.eager,
             prerequisite=e.prerequisite,affects=e.affects,invisible=e.invisible,party=e.party,
+            protection=e.protection,
             ownerImage=e.ownerImage,provider=ids[e.provider]}
         if lastFence then j.after[#j.after+1]=lastFence end
         if e.boundary then
@@ -295,12 +311,43 @@ function P.CastAges(entries)
         else phase[#phase+1]=i end
         jobs[#jobs+1]=j
     end
-    local solution=BfBot.Timing.Solve(BfBot.Timing.Constrain(jobs))
+    local solution=BfBot.Timing.Solve(BfBot.Timing.Constrain(jobs),0,immediate)
     local ages={}
     for i,e in ipairs(entries)do
         if not e.boundary then ages[i]=solution and solution.jobs[i].age or math.huge end
     end
     return ages,solution and solution.finish or math.huge
+end
+
+-- One read-only estimate per planner refresh. Actual engine movement, failed
+-- actions, projectile travel and item handoffs can differ from these costs.
+function P.EstimateRemaining(snapshot,requests,plan,mode,estimate)
+    local entries,indices,metadata,byRequest={},{},{},{}
+    for i,d in ipairs(plan.decisions)do if d.source then
+        local s,r=d.source,d.request;local key=s.id..':'..(r.var or '')
+        if not metadata[key]then metadata[key]={timing=(estimate or P.EstimateCast)(s),
+            invisible=P.DeliversInvisibility(s.row,r.var),
+            protection=mode=='smart' and P.DeliversSpellProtection(s.row,r.var)}end
+        local m=metadata[key];local t=m.timing
+        local e={request=r,index=i,caster=s.lane or s.actor,actor=s.actor,
+            duration=d.duration,release=t.release,aura=t.aura,eager=t.eager,
+            prerequisite=t.prerequisite,ownerImage=t.ownerPrerequisite,
+            affects=t.ownerPrerequisite and s.actor or r.target,provider=s.providerRequest,
+            invisible=m.invisible,party=s.aoe or s.row.isAoE==1 or r.target=='party'}
+        e.protection=m.protection
+        entries[#entries+1]=e;indices[#entries]=i;byRequest[r]=e
+    end end
+    for _,e in ipairs(entries)do
+        if e.provider and byRequest[e.provider]then byRequest[e.provider].eager=true end
+    end
+    local ages,finish=P.CastAges(entries,mode~='smart');local remaining={}
+    if finish==math.huge then return remaining end
+    for i,e in ipairs(entries)do
+        local duration=e.duration or 0
+        if duration==-1 then remaining[indices[i]]=-1
+        elseif duration>0 then remaining[indices[i]]=math.max(0,duration-ages[i]/15)end
+    end
+    return remaining,finish
 end
 
 local function orderScore(entries)
@@ -363,7 +410,7 @@ function P.OrderPrerequisite(row,sprite)
 end
 
 -- Inspect only on planning/start, never in an effect callback or world tick.
-function P.DeliversInvisibility(row,variant)
+local function deliversOpcode(row,variant,opcodes)
     if not EEex_Resource_Demand then return false end
     local seen,budget={},128
     local visitSpell,visitEffect
@@ -378,7 +425,7 @@ function P.DeliversInvisibility(row,variant)
         return false
     end
     visitEffect=function(op,res)
-        if op==20 then return true end
+        if opcodes[op] then return true end
         if type(res)~='string' or res=='' or budget<=0 then return false end
         if op==146 or op==148 or op==326 or op==232 then return visitSpell(res) end
         if op==177 or op==272 then
@@ -408,14 +455,22 @@ function P.DeliversInvisibility(row,variant)
     end)
     return ok and found==true
 end
+function P.DeliversInvisibility(row,variant)
+    return deliversOpcode(row,variant,{[20]=true})
+end
+function P.DeliversSpellProtection(row,variant)
+    return deliversOpcode(row,variant,{[200]=true,[201]=true})
+end
 
 function P.EstimateCast(source)
     local row=source.row or {}
-    local sprite=source.casterRef and BfBot.Exec._ResolveCaster(source.casterRef)
-        or source.slot~=nil and EEex_Sprite_GetInPortrait(source.slot)
-    local stats=sprite and EEex_Sprite_GetActiveStats(sprite)
+    local sprite=source.casterRef and BfBot.Exec and BfBot.Exec._ResolveCaster
+        and BfBot.Exec._ResolveCaster(source.casterRef)
+        or source.slot~=nil and type(EEex_Sprite_GetInPortrait)=='function' and EEex_Sprite_GetInPortrait(source.slot)
+    local stats=sprite and type(EEex_Sprite_GetActiveStats)=='function' and EEex_Sprite_GetActiveStats(sprite)
     local timing={release=BfBot.Timing.AURA_TICKS,aura=stats and stats.m_bAuraCleansing~=0 or false,
-        barrier=source.itemOwner~=nil}
+        barrier=source.itemOwner~=nil,
+        eager=source.itemOwner~=nil or source.duration==-1 or (source.duration or 0)>=300}
     if not sprite then timing.barrier=true;return timing end
     local ok,barrier,prerequisite=pcall(P.OrderPrerequisite,row,sprite)
     timing.prerequisite=ok and prerequisite==true
@@ -436,6 +491,15 @@ end
 
 function P.SortRequests(snapshot,requests,mode,estimate)
     if mode~='smart' and mode~='long' then return requests,false end
+    -- Always start from saved priority. Input is often the previous sorted
+    -- result, and must not become a new tie-breaker on every button press.
+    local input=requests;requests={}
+    for i,r in ipairs(input)do requests[i]=r end
+    local inputRanks={};for i,r in ipairs(input)do inputRanks[r]=i end
+    table.sort(requests,function(a,b)
+        local ar,br=a.manual or math.huge,b.manual or math.huge
+        return ar==br and inputRanks[a]<inputRanks[b] or ar<br
+    end)
     local original=P.Assign(snapshot,requests)
     local metadata={}
     local ranks={};for i,r in ipairs(requests) do ranks[r]=i end
@@ -447,19 +511,26 @@ function P.SortRequests(snapshot,requests,mode,estimate)
                 local key=d.source.id..':'..(r.var or '')
                 if not metadata[key] then
                     metadata[key]={timing=estimate and estimate(d.source) or {},
-                        invisible=mode=='smart' and P.DeliversInvisibility(d.source.row,r.var)}
+                        invisible=mode=='smart' and P.DeliversInvisibility(d.source.row,r.var),
+                        protection=mode=='smart' and P.DeliversSpellProtection(d.source.row,r.var)}
                 end
                 t=metadata[key].timing
             end
             result[i]={request=r,index=ranks[r],caster=d.source and (d.source.lane or d.source.actor) or 'missing',
                 actor=d.source and d.source.actor,
                 duration=d.duration or 0,release=math.max(0,t.release or 64),aura=t.aura==true,
+                eager=t.eager==true,
                 unavailable=not d.source,barrier=d.source and (d.source.itemOwner~=nil or t.barrier==true),
                 prerequisite=t.prerequisite==true,
                 ownerImage=t.ownerPrerequisite==true,provider=d.source and d.source.providerRequest,
                 affects=t.ownerPrerequisite and d.source.actor or r.target,
                 invisible=d.source and metadata[d.source.id..':'..(r.var or '')].invisible,
+                protection=d.source and metadata[d.source.id..':'..(r.var or '')].protection,
                 party=d.source and (d.source.aoe or d.source.row.isAoE==1) or r.target=='party'}
+        end
+        local byRequest={};for _,e in ipairs(result)do byRequest[e.request]=e end
+        for _,e in ipairs(result)do
+            if e.provider and byRequest[e.provider]then byRequest[e.provider].eager=true end
         end
         return result
     end
@@ -491,10 +562,30 @@ function P.SortRequests(snapshot,requests,mode,estimate)
             end
         end
     end end
+    for _,e in ipairs(initial)do if e.protection then
+        for _,other in ipairs(initial)do
+            if other~=e and not other.protection and other.actor~=e.request.target
+                and (other.party or other.request.target==e.request.target)then
+                edges[other.request]=edges[other.request]or {};edges[other.request][e.request]=true
+            end
+        end
+    end end
+    -- A short-lived summon-creation ability unlocks long-lived buffs. Give
+    -- its prerequisite the longest downstream priority, rather than leaving
+    -- the entire summoned book behind ordinary short buffs.
+    local priority={}
+    for _,e in ipairs(initial)do priority[e.request]=e.duration==-1 and math.huge or e.duration end
+    for _=1,#initial do
+        local changed=false
+        for a,targets in pairs(edges)do for b in pairs(targets)do
+            if (priority[b]or 0)>(priority[a]or 0)then priority[a]=priority[b];changed=true end
+        end end
+        if not changed then break end
+    end
     local function longer(a,b)
         if a.unavailable~=b.unavailable then return not a.unavailable end
-        local ad=a.duration==-1 and math.huge or a.duration
-        local bd=b.duration==-1 and math.huge or b.duration
+        local ad=priority[a.request] or 0
+        local bd=priority[b.request] or 0
         if ad~=bd then return ad>bd end
         return a.index<b.index
     end
@@ -526,8 +617,8 @@ function P.SortRequests(snapshot,requests,mode,estimate)
     local function requestList(entries)
         local list={};for i,e in ipairs(entries) do list[i]=e.request end;return list
     end
-    -- Auto sources can rebalance when priorities move. Refresh duration keys
-    -- after each allocation so Long first reflects the resulting assignments.
+    -- Legacy requests without saved priorities can still rebalance. Refresh
+    -- their keys; normal saved plans allocate by stable manual priority.
     local baseline=initial
     local seen={}
     for pass=1,4 do
@@ -558,9 +649,9 @@ function P.SortRequests(snapshot,requests,mode,estimate)
     end
     local sorted=requestList(entries);local nextPlan=P.Assign(snapshot,sorted);local available={}
     for _,d in ipairs(nextPlan.decisions) do if d.source then available[d.request]=true end end
-    for _,d in ipairs(original.decisions) do if d.source and not available[d.request] then return requests,false end end
-    local changed=false;for i,r in ipairs(sorted) do changed=changed or r~=requests[i] end
-    return changed and sorted or requests,changed
+    for _,d in ipairs(original.decisions) do if d.source and not available[d.request] then return input,false end end
+    local changed=false;for i,r in ipairs(sorted) do changed=changed or r~=input[i] end
+    return changed and sorted or input,changed
 end
 
 -- Real game prerequisites apply to every order mode. No saved caster/recipient
@@ -1091,12 +1182,17 @@ function P.BuildQueue(snapshot, requests, orderMode)
                 sharedItem = s.itemOwner and s.row.itemResref or nil,
                 smartTiming = orderMode=='smart' or nil,
                 timing = orderMode=='smart' and P.EstimateCast(s) or nil,
+                protectionTarget=orderMode=='smart' and P.DeliversSpellProtection(s.row,r.var) and r.target or nil,
                 isProjectImage = s.row.isProjectImage }
             positions[r]=#queue
         end
     end
     for _,entry in ipairs(queue)do
         entry.providerPlanIndex=entry.providerRequest and positions[entry.providerRequest]or nil
+        if entry.providerPlanIndex then
+            local provider=queue[entry.providerPlanIndex]
+            if provider and provider.timing then provider.timing.eager=true end
+        end
         entry.providerRequest=nil
     end
     if #queue == 0 then return nil, plan end
