@@ -105,6 +105,11 @@ An unchanged signature avoids repeatedly sorting. Replenished capacities are
 used for ordering only: resting is not required to regain a stable Smart order,
 and execution never invents spent uses.
 
+Source reservations use saved request priorities, not the sorted row positions.
+Repeated Smart recalculation therefore does not move scarce stronger sources
+between recipients. Summon creation inherits its longest dependent buff's
+priority, while every dependent cast still requires its creator first.
+
 Long First sorts known durations descending, with permanent effects first.
 Smart starts there and makes bounded improvements using assigned durations,
 casting factors and aura recovery. Its preview and real dispatch share one
@@ -112,6 +117,14 @@ read-only game-time model. Smart also delays shorter caster sequences to finish
 closer to longer ones, preserving more buff time without deliberately extending
 the earliest predicted finish. This is a practical heuristic, not a global
 optimality guarantee. Native action delays can change actual completion times.
+
+Permanent and five-minute-or-longer buffs start promptly; short buffs retain
+useful latest-start delays. Summon creation and shared item use are also eager.
+Order's **Est. Left** column subtracts each cast's modeled age at whole-plan
+completion from its duration. Custom and Long First estimates use immediate
+independent lanes; Smart includes its deliberate delays. Unknown/unavailable
+entries show a dash, and zero remaining time shows Expired. Native movement,
+handoffs, projectile travel and failed casts can change the estimate.
 
 Pending work is rescheduled after actual completions, skips, summon binding
 or changed casting speed/aura. Casting factors are parsed once; a small active
@@ -126,6 +139,11 @@ for invisibility. Casting modifiers retain required relationships. Creating a
 summon precedes its spells, and Project Image follows its owner's planned work.
 Manual movement cannot put a summon spell before its creation. Invalid/cyclic
 timing estimates disable deliberate JIT waits rather than rewriting effects.
+
+Smart also defers Spell Deflection/Turning until incoming buffs from other
+casters finish, including party spells delivered through single-target child
+spells. Self casts remain independent. This prevents the reproduced Righteous
+Wrath rejection on Aerie; it does not remove innate magic resistance.
 
 Custom restores separately saved manual positions. New requests append; deleted
 ones disappear. Source/recipient/variant choices carry between modes. Manual

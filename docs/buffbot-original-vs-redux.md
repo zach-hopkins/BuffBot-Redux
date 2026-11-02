@@ -183,6 +183,14 @@ Incoming targeted buffs precede invisibility on the same recipient. Self and par
 
 Sorting does not spend resources or change browser sort order. Manual movement and explicit caster choices remain available. A shared read-only timing model now also controls Smart dispatch: shorter caster sequences intentionally start later so their final buffs finish closer to the longer sequences. Long First and Custom start independent casters immediately except for actual dependencies. Native completions, skips, summon binding and changed speed/aura update pending timing. No buff expiry is rewritten.
 
+Beta.7 keeps automatic source allocation tied to saved priorities, so sorting
+does not reshuffle scarce sources between recipients. Summon creators inherit
+the priority of their longest dependent buff. Long buffs start promptly, and
+Smart defers Spell Deflection/Turning until incoming buffs finish. Order's
+**Est. Left** column shows the modeled duration at whole-plan completion,
+including **Expired** where appropriate. This helps explain the cost of a long
+list without promising perfect engine timing.
+
 ### Purposeful item sharing
 
 `BfBotShr.lua` exposes eligible unique loose daily rechargeable items as borrower-owned sources, sharing one physical charge pool. Native inventory usability checks determine whether the borrower can actually wear the item.

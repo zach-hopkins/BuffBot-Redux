@@ -50,9 +50,9 @@ The six new catalogs began as AI-authored translations. The German catalog has s
 
 ## Installation
 
-1. Download one ZIP from [Releases](https://github.com/zach-hopkins/BuffBot-Redux/releases/tag/v1.10.1-redux-beta.6):
-   - **[Recommended — with LuaJIT](https://github.com/zach-hopkins/BuffBot-Redux/releases/download/v1.10.1-redux-beta.6/buffbot-v1.10.1-redux-beta.6-RECOMMENDED-with-LuaJIT.zip)** — includes the LuaJIT setup helper; installs it before BuffBot.
-   - **[Without LuaJIT](https://github.com/zach-hopkins/BuffBot-Redux/releases/download/v1.10.1-redux-beta.6/buffbot-v1.10.1-redux-beta.6-without-LuaJIT.zip)** — installs BuffBot alone.
+1. Download one ZIP from [Releases](https://github.com/zach-hopkins/BuffBot-Redux/releases/tag/v1.10.1-redux-beta.7):
+   - **[Recommended — with LuaJIT](https://github.com/zach-hopkins/BuffBot-Redux/releases/download/v1.10.1-redux-beta.7/buffbot-v1.10.1-redux-beta.7-RECOMMENDED-with-LuaJIT.zip)** — includes the LuaJIT setup helper; installs it before BuffBot.
+   - **[Without LuaJIT](https://github.com/zach-hopkins/BuffBot-Redux/releases/download/v1.10.1-redux-beta.7/buffbot-v1.10.1-redux-beta.7-without-LuaJIT.zip)** — installs BuffBot alone.
 2. Extract the ZIP into your game folder and run **Install-BuffBot.cmd**.
 3. Start the game through **InfinityLoader.exe**.
 
@@ -102,6 +102,10 @@ In **Settings → Active buffs**, **Skip active** avoids buffs you already have.
 - **Undo**: undo the last order-mode change when available.
 
 The active mode is highlighted and saved with the list. Automatic ordering treats prepared spells and daily charges as replenished, so spending a spell does not shuffle the list. **Casting still checks your real remaining uses.** Existing lists start in Custom to preserve their order; new lists start in Smart Order.
+
+**Est. Left** shows about how much buff time should remain when the whole list finishes. **Expired** means it may run out while other buffs are still casting. This is an estimate: walking, item handoffs and failed casts can change it.
+
+Smart Order keeps automatic sources stable, creates summons before their spells, and puts Spell Deflection/Turning after incoming buffs they could block. Long buffs start promptly; short buffs can wait to stay useful longer.
 
 ### Set up wake-up buffs
 

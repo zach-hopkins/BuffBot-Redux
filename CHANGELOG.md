@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v1.10.1-redux-beta.7 — 1 November 2026
 
 - Add an Est. Left column to Order, estimating remaining duration after the
   whole list finishes using concurrent caster lanes, aura and Smart delays.
