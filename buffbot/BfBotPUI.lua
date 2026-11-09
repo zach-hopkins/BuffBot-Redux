@@ -122,6 +122,7 @@ function U.Refresh(fresh)
     P.ApplyOrder(U.snapshot,U.preset,P.EstimateCast)
     U.plan = P.Assign(U.snapshot, U.preset.requests)
     U.remaining,U.estimatedFinish=P.EstimateRemaining(U.snapshot,U.preset.requests,U.plan,U.preset.orderMode)
+    U.orderWarnings=P.OrderWarnings(U.snapshot,U.preset.requests,U.plan,U.preset.orderMode)
     bbPartyName = U.preset.name
     bbPartyBuffs, bbPartyRequests, bbPartyTargets = {}, {}, {}
     for key, group in pairs(U.snapshot.groups) do
@@ -884,9 +885,14 @@ end
 function U.OrderName(index)
     local row=bbPartyRequests[index]
     local d=U.plan.decisions[index]
-    return row and row.name .. (row.unavailable and ("\n"..(d.reason or P.Text("Buff unavailable"))) or "") or ""
+    local warning=U.orderWarnings and U.orderWarnings[index]
+    return row and row.name .. (row.unavailable and ("\n"..(d.reason or P.Text("Buff unavailable")))
+        or warning and ('\n'..warning.label) or "") or ""
 end
-function U.OrderTip(index) return U.OrderName(index) end
+function U.OrderTip(index)
+    local warning=U.orderWarnings and U.orderWarnings[index]
+    return U.OrderName(index)..(warning and ('\n'..warning.detail)or '')
+end
 function U.CanMove(index,delta) return bbPartyRequests[index]~=nil and bbPartyRequests[index+delta]~=nil end
 function U.CanSortOrder()
     return U.preset~=nil and BfBot.Exec.GetState()~='running'

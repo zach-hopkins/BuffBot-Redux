@@ -43,6 +43,19 @@ def test_spell_deflection_waits_for_other_caster_party_wrapper(schedule):
       return s.jobs.wrath.finish<=s.jobs.deflect.start
     ''')
 
+
+def test_shared_item_serializes_only_its_own_uses(schedule):
+    assert schedule.execute('''
+      local jobs=T.Constrain({
+        {id='ring1',caster='A',release=15,item='ring'},
+        {id='ring2',caster='B',release=15,item='ring'},
+        {id='other',caster='C',release=90}})
+      local s=assert(T.Solve(jobs))
+      return s.jobs.ring1.finish<=s.jobs.ring2.start and s.finish==90
+        and s.jobs.other.start==0 and s.jobs.ring2.finish==90
+    ''')
+
+
 def test_targeted_buffs_precede_invisibility_even_when_that_extends_a_lane(schedule):
     assert schedule.execute('''
       local s=assert(T.Solve({

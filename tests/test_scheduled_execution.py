@@ -61,6 +61,17 @@ def test_custom_mode_keeps_immediate_parallel_native_dispatch(execution):
     ''')
 
 
+def test_custom_timing_delays_short_lane_without_imposing_global_order(execution):
+    assert execution.execute('''
+      local q=queue(false)
+      for _,e in ipairs(q)do e.customTiming=true end
+      assert(E.Start(q,0));assert(#actions==1 and actions[1].caster=='A')
+      for i=0,4 do clock=i*90+15;E._Advance('p0');clock=(i+1)*90;T.Pump()end
+      local b={};for _,a in ipairs(actions)do if a.caster=='B'then b[#b+1]=a end end
+      return #actions==7 and #b==1 and b[1].time==450
+    ''')
+
+
 def test_scheduled_loan_does_not_take_custody_before_its_dispatch_time(execution):
     assert execution.execute('''
       local touched=0

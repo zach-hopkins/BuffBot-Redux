@@ -293,8 +293,8 @@ function P.Assign(snapshot, requests)
 end
 
 -- Explicit plan-order tools. These never change requests, targets or caster locks.
--- Smart order is a bounded heuristic, scored by the worst retained lifetime
--- fraction after per-caster aura/release simulation, then total retained fraction.
+-- Smart order is a bounded heuristic, scored by the shortest remaining buff
+-- lifetime in seconds after concurrent casting, then total remaining lifetime.
 function P.CastAges(entries,immediate)
     local jobs,phase,lastFence={},{},nil
     local ids={};for i,e in ipairs(entries)do if e.request then ids[e.request]=i end end
@@ -304,6 +304,7 @@ function P.CastAges(entries,immediate)
             eager=e.duration==-1 or (e.duration or 0)>=300 or e.eager,
             prerequisite=e.prerequisite,affects=e.affects,invisible=e.invisible,party=e.party,
             protection=e.protection,
+            item=e.item,
             ownerImage=e.ownerImage,provider=ids[e.provider]}
         if lastFence then j.after[#j.after+1]=lastFence end
         if e.boundary then
@@ -326,7 +327,7 @@ function P.EstimateRemaining(snapshot,requests,plan,mode,estimate)
     for i,d in ipairs(plan.decisions)do if d.source then
         local s,r=d.source,d.request;local key=s.id..':'..(r.var or '')
         if not metadata[key]then metadata[key]={timing=(estimate or P.EstimateCast)(s),
-            invisible=P.DeliversInvisibility(s.row,r.var),
+            invisible=mode=='smart' and P.DeliversInvisibility(s.row,r.var),
             protection=mode=='smart' and P.DeliversSpellProtection(s.row,r.var)}end
         local m=metadata[key];local t=m.timing
         local e={request=r,index=i,caster=s.lane or s.actor,actor=s.actor,
@@ -335,12 +336,13 @@ function P.EstimateRemaining(snapshot,requests,plan,mode,estimate)
             affects=t.ownerPrerequisite and s.actor or r.target,provider=s.providerRequest,
             invisible=m.invisible,party=s.aoe or s.row.isAoE==1 or r.target=='party'}
         e.protection=m.protection
+        e.item=s.row.kind=='itm' and s.pool or nil
         entries[#entries+1]=e;indices[#entries]=i;byRequest[r]=e
     end end
     for _,e in ipairs(entries)do
         if e.provider and byRequest[e.provider]then byRequest[e.provider].eager=true end
     end
-    local ages,finish=P.CastAges(entries,mode~='smart');local remaining={}
+    local ages,finish=P.CastAges(entries,mode~='smart' and mode~='custom');local remaining={}
     if finish==math.huge then return remaining end
     for i,e in ipairs(entries)do
         local duration=e.duration or 0
@@ -350,14 +352,37 @@ function P.EstimateRemaining(snapshot,requests,plan,mode,estimate)
     return remaining,finish
 end
 
+-- Custom order is intentional. Explain risky targeting without silently
+-- reordering it or turning a later cast into an impossible prerequisite.
+function P.OrderWarnings(snapshot,requests,plan,mode)
+    local warnings={};if mode~='custom'then return warnings end
+    for i,d in ipairs(plan.decisions)do if d.source
+        and P.DeliversInvisibility(d.source.row,d.request.var)then
+        local later={}
+        for j=i+1,#plan.decisions do local other=plan.decisions[j];local s=other.source
+            if s and other.request.target~='party' and not s.aoe
+                and s.actor~=other.request.target
+                and (d.request.target=='party' or d.request.target==other.request.target)then
+                local actor=snapshot.actors[other.request.target]
+                later[#later+1]=(s.row.name or other.request.group)..' -> '..(actor and actor.name or other.request.target)
+                warnings[j]={label=P.Text('Target may be invisible'),
+                    detail=P.Text('An earlier invisibility cast may prevent targeting this recipient. Move this buff before invisibility, or keep your Custom order if your setup allows it.')}
+            end
+        end
+        if #later>0 then warnings[i]={label=P.Text('Later buffs may fail'),
+            detail=P.Text('This invisibility cast comes before incoming buffs: ')..table.concat(later,'; ')}end
+    end end
+    return warnings
+end
+
 local function orderScore(entries)
     -- Loans lock their physical item, not every unrelated casting lane.
     local jobs,positions={},{}
     for i,e in ipairs(entries)do jobs[i]=e;positions[i]=i end
-    local ages=P.CastAges(jobs);local worst,total=1,0
+    local ages=P.CastAges(jobs);local worst,total=math.huge,0
     for i,e in ipairs(entries) do
         if e.duration>0 then
-            local retained=1-ages[positions[i]]/(e.duration*15)
+            local retained=math.max(0,e.duration-ages[positions[i]]/15)
             worst=math.min(worst,retained);total=total+retained
         end
     end
@@ -470,7 +495,7 @@ function P.EstimateCast(source)
     local stats=sprite and type(EEex_Sprite_GetActiveStats)=='function' and EEex_Sprite_GetActiveStats(sprite)
     local timing={release=BfBot.Timing.AURA_TICKS,aura=stats and stats.m_bAuraCleansing~=0 or false,
         barrier=source.itemOwner~=nil,
-        eager=source.itemOwner~=nil or source.duration==-1 or (source.duration or 0)>=300}
+        eager=source.duration==-1 or (source.duration or 0)>=300}
     if not sprite then timing.barrier=true;return timing end
     local ok,barrier,prerequisite=pcall(P.OrderPrerequisite,row,sprite)
     timing.prerequisite=ok and prerequisite==true
@@ -518,6 +543,7 @@ function P.SortRequests(snapshot,requests,mode,estimate)
             end
             result[i]={request=r,index=ranks[r],caster=d.source and (d.source.lane or d.source.actor) or 'missing',
                 actor=d.source and d.source.actor,
+                item=d.source and d.source.row.kind=='itm' and d.source.pool or nil,
                 duration=d.duration or 0,release=math.max(0,t.release or 64),aura=t.aura==true,
                 eager=t.eager==true,
                 unavailable=not d.source,barrier=d.source and (d.source.itemOwner~=nil or t.barrier==true),
@@ -1176,12 +1202,14 @@ function P.BuildQueue(snapshot, requests, orderMode)
                 plannedActor = s.liveActor or s.actor, plannedTarget = r.target, planIndex = #queue+1,
                 plannedCasterName=s.casterName,spellName=s.row.name,isAoE=s.aoe,
                 future=s.future,providerRequest=s.providerRequest,
-                invisibilityTarget = P.DeliversInvisibility(s.row,r.var)
+                invisibilityTarget = orderMode=='smart' and P.DeliversInvisibility(s.row,r.var)
                     and ((s.aoe or s.row.isAoE==1 or r.target=="party") and "party" or r.target) or nil,
                 plannedItemSlot = s.itemSlot, itemOwner = s.itemOwner,
+                itemPool=s.row.kind=='itm' and s.pool or nil,
                 sharedItem = s.itemOwner and s.row.itemResref or nil,
                 smartTiming = orderMode=='smart' or nil,
-                timing = orderMode=='smart' and P.EstimateCast(s) or nil,
+                customTiming=orderMode=='custom' or nil,
+                timing = (orderMode=='smart' or orderMode=='custom') and P.EstimateCast(s) or nil,
                 protectionTarget=orderMode=='smart' and P.DeliversSpellProtection(s.row,r.var) and r.target or nil,
                 isProjectImage = s.row.isProjectImage }
             positions[r]=#queue

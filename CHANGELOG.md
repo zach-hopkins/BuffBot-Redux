@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased
+
+- Custom preserves each caster's saved order while aligning shorter lanes near
+  completion, rather than issuing short independent buffs immediately. Casters
+  still overlap; the whole list is not forced into a serial cross-party order.
+- Keep uses of one physical shared item in their relative order and delay a
+  handoff until its cast is ready. Once borrowed gear arrives, use and return
+  it promptly rather than adding a new scheduling wait while holding it.
+- Keep Smart's anticipatory invisibility scheduling out of Custom. An early
+  Mass Invisibility cannot wait on later spells in its own caster queue,
+  blank the entire Est. Left column or leave the run stalled until timeout.
+- Show inline Custom-order warnings for invisibility followed by incoming
+  targeted buffs. Preserve the player's chosen order and native targeting rules.
+- Smart scoring now maximizes the shortest remaining buff duration in seconds,
+  then total remaining time, instead of comparing retained lifetime fractions.
+
 ## v1.10.1-redux-beta.7 — 1 November 2026
 
 - Add an Est. Left column to Order, estimating remaining duration after the

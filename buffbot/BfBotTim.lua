@@ -122,7 +122,12 @@ function T.Constrain(input)
         for _,v in ipairs(j.after or {})do c.after[#c.after+1]=v end
         jobs[i]=c
     end
+    local lastItem={}
     for i,j in ipairs(jobs)do
+        if j.item then
+            if lastItem[j.item]then j.after[#j.after+1]=lastItem[j.item]end
+            lastItem[j.item]=j.id
+        end
         for k,other in ipairs(jobs)do
             if i~=k then
                 local earlier=(other.rank or k)<(j.rank or i)
@@ -173,6 +178,7 @@ function T.Begin(casters)
     local enabled,jit=false,false
     for _,c in pairs(casters)do for _,e in ipairs(c.queue)do
         if e.smartTiming then enabled=true;jit=true end
+        if e.customTiming then enabled=true;jit=true end
         if e.future or e.providerPlanIndex then enabled=true end
     end end
     local now=tick()
@@ -185,6 +191,7 @@ function T.Begin(casters)
                 target=e.plannedTarget,rank=e.planIndex,spell=e.resref,
                 release=timing.release or T.AURA_TICKS,aura=timing.aura==true,
                 eager=timing.eager==true,
+                item=e.itemPool,
                 rawSegments=timing.rawSegments,
                 prerequisite=timing.prerequisite,affects=timing.affects or e.plannedTarget,
                 ownerImage=timing.ownerPrerequisite,providerIndex=e.providerPlanIndex,
@@ -228,7 +235,10 @@ function T.Replan(now)
             j.notBefore=now;j.after={}
             for _,d in ipairs(n.after)do
                 local id=type(d)=='table' and d.id or d
-                if finished[id] then j.notBefore=math.max(j.notBefore,finished[id].finished or now)
+                if finished[id] then
+                    local at=type(d)=='table' and d.from=='start' and finished[id].started
+                        or finished[id].finished or now
+                    j.notBefore=math.max(j.notBefore,at)
                 else j.after[#j.after+1]=d end
             end
             j.notBefore=math.max(j.notBefore,ready[n.caster] or 0)
@@ -288,6 +298,9 @@ function T.Replace(old,entry)
     local run=T.run;local n=run and run.byEntry[old]
     if not n then return end
     run.byEntry[old]=nil;run.byEntry[entry]=n
+    -- Once a physical handoff is ready, use and return it immediately. Do not
+    -- reschedule another deliberate wait while holding its owner's gear.
+    if old.deferredLoan then n.eager=true end
     local timing=entry.timing
     if timing then
         n.release=timing.release or n.release;n.aura=timing.aura==true
@@ -299,7 +312,8 @@ function T.Blocked(run,node)
     for _,d in ipairs(node.after)do
         local id=type(d)=='table' and d.id or d
         local before=run.byId[id]
-        if before and not before.outcome then return true end
+        if before and not before.outcome
+            and not(type(d)=='table' and d.from=='start' and before.started~=nil)then return true end
     end
     return false
 end

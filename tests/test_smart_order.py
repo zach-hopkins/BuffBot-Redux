@@ -10,7 +10,7 @@ def test_end_duration_uses_concurrent_lanes_and_reports_expired_buffs(lua):
       source(s,'PARALLEL','B',600,'p',1);source(s,'PERM','B',-1,'perm',1)
       local requests={request('SHORT','A','A'),request('LAST','A','A'),request('PARALLEL','B','B'),request('PERM','B','B')}
       local p=P.Assign(s,requests)
-      local left,finish=P.EstimateRemaining(s,requests,p,'custom',function()return {release=15}end)
+      local left,finish=P.EstimateRemaining(s,requests,p,'long',function()return {release=15}end)
       return finish==105 and left[1]==0 and left[2]==60 and left[3]==594 and left[4]==-1
     ''')
 
@@ -24,7 +24,20 @@ def test_end_duration_uses_smart_delays_and_excludes_missing_casts(lua):
       local function cost(source)return {release=source.actor=='A'and 15 or 90}end
       local smart=P.EstimateRemaining(s,reqs,p,'smart',cost)
       local custom=P.EstimateRemaining(s,reqs,p,'custom',cost)
-      return smart[1]==60 and custom[1]==55 and smart[2]==600 and smart[3]==nil
+      local long=P.EstimateRemaining(s,reqs,p,'long',cost)
+      return smart[1]==60 and custom[1]==60 and long[1]==55 and smart[2]==600 and smart[3]==nil
+    ''')
+
+
+def test_custom_invisibility_before_same_caster_buffs_warns_without_cyclic_estimate(lua):
+    assert lua.execute('''
+      local s=snapshot();local invis=source(s,'MASSINV','A',168,'inv',1,{aoe=true})
+      source(s,'HASTE','A',138,'haste',1)
+      P.DeliversInvisibility=function(row)return row==invis.row end
+      local reqs={request('MASSINV','party','A'),request('HASTE','B','A')}
+      local p=P.Assign(s,reqs);local warnings=P.OrderWarnings(s,reqs,p,'custom')
+      local left,finish=P.EstimateRemaining(s,reqs,p,'custom',function()return {release=15}end)
+      return warnings[1]and warnings[2]and finish==105 and left[1]==162 and left[2]==138
     ''')
 
 

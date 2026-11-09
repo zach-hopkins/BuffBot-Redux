@@ -112,7 +112,8 @@ priority, while every dependent cast still requires its creator first.
 
 Long First sorts known durations descending, with permanent effects first.
 Smart starts there and makes bounded improvements using assigned durations,
-casting factors and aura recovery. Its preview and real dispatch share one
+casting factors and aura recovery. Its primary score is the shortest remaining
+buff lifetime in seconds, followed by total remaining time. Its preview and real dispatch share one
 read-only game-time model. Smart also delays shorter caster sequences to finish
 closer to longer ones, preserving more buff time without deliberately extending
 the earliest predicted finish. This is a practical heuristic, not a global
@@ -121,8 +122,8 @@ optimality guarantee. Native action delays can change actual completion times.
 Permanent and five-minute-or-longer buffs start promptly; short buffs retain
 useful latest-start delays. Summon creation and shared item use are also eager.
 Order's **Est. Left** column subtracts each cast's modeled age at whole-plan
-completion from its duration. Custom and Long First estimates use immediate
-independent lanes; Smart includes its deliberate delays. Unknown/unavailable
+completion from its duration. Custom and Smart estimates include deliberate
+short-lane delays; Long First uses immediate independent lanes. Unknown/unavailable
 entries show a dash, and zero remaining time shows Expired. Native movement,
 handoffs, projectile travel and failed casts can change the estimate.
 
@@ -130,10 +131,13 @@ Pending work is rescheduled after actual completions, skips, summon binding
 or changed casting speed/aura. Casting factors are parsed once; a small active
 stat read checks pending casters at most once per game second and on completion.
 There is no per-frame party/spellbook rebuild. Already-started casts stay fixed.
-Long First and Custom start independent casters immediately, subject to real
-prerequisites. Within each caster, the saved sequence is retained.
+Long First starts independent casters immediately, subject to real prerequisites.
+Custom retains each caster's saved sequence and aligns shorter independent
+lanes near the finish. It does not force a serial cross-party order. Uses of
+one physical item retain their relative order. Its invisibility warnings do
+not reorder the plan or introduce waits on later spells.
 
-Incoming targeted buffs precede invisibility on the same recipient. Self and
+In Smart mode, incoming targeted buffs precede invisibility on the same recipient. Self and
 Party actions are exempt. Supported spell/variant/item child graphs are inspected
 for invisibility. Casting modifiers retain required relationships. Creating a
 summon precedes its spells, and Project Image follows its owner's planned work.

@@ -121,7 +121,7 @@ In **Settings → Casting**, choose **Fast-forward 2x (Recommended)**, **4x**, o
 
 Time really passes faster during the plan. Existing buffs, fatigue and delayed effects follow that time too. Redux's party planner no longer uses Balanced Quick Cast or rewrites buff expiry times.
 
-Independent casters can act together. Smart Order deliberately delays shorter sequences to waste less buff time; Long First and Custom start independent casters immediately. Real prerequisites still apply: a summon must exist, shared gear must arrive, and incoming spells must finish before invisibility. Combat and lost player control can stop casting. Moving someone yourself may interrupt their current spell; their chain does not reliably resume. Let the plan finish before giving new orders when possible.
+Independent casters can act together. Smart Order deliberately delays shorter sequences to waste less buff time; Long First starts independent casters immediately. Custom keeps your saved order within each caster and delays short independent sequences to preserve buff time. Casters can still overlap. Real prerequisites still apply: a summon must exist, shared gear must arrive, and Smart keeps incoming spells before invisibility. Custom shows warnings for risky invisibility placement. Combat and lost player control can stop casting. Moving someone yourself may interrupt their current spell; their chain does not reliably resume. Let the plan finish before giving new orders when possible.
 
 ### Items, summons and saved plans
 

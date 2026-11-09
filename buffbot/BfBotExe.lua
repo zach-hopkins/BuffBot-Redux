@@ -681,7 +681,7 @@ function BfBot.Exec._BuildQueue(userQueue, qcMode)
                     targetName=tostring(entry.plannedTarget or entry.target),kind='itm',cheat=false,
                     raw=entry,deferredLoan=true,plannedActor=entry.plannedActor,plannedTarget=entry.plannedTarget,
                     planIndex=entry.planIndex,invisibilityTarget=entry.invisibilityTarget,protectionTarget=entry.protectionTarget,
-                    isAoE=entry.isAoE,smartTiming=entry.smartTiming,timing=entry.timing})
+                    isAoE=entry.isAoE,smartTiming=entry.smartTiming,customTiming=entry.customTiming,itemPool=entry.itemPool,timing=entry.timing})
                 totalEntries=totalEntries+1
             end
             goto continue
@@ -699,7 +699,7 @@ function BfBot.Exec._BuildQueue(userQueue, qcMode)
                 plannedActor=entry.plannedActor,plannedTarget=entry.plannedTarget,
                 planIndex=entry.planIndex,providerPlanIndex=entry.providerPlanIndex,
                 invisibilityTarget=entry.invisibilityTarget,isAoE=entry.isAoE,protectionTarget=entry.protectionTarget,
-                smartTiming=entry.smartTiming,timing=entry.timing})
+                smartTiming=entry.smartTiming,customTiming=entry.customTiming,itemPool=entry.itemPool,timing=entry.timing})
             totalEntries=totalEntries+1
             goto continue
         end
@@ -853,7 +853,7 @@ function BfBot.Exec._BuildQueue(userQueue, qcMode)
                     plannedTarget = entry.plannedTarget,
                     planIndex = entry.planIndex, invisibilityTarget = entry.invisibilityTarget,
                     protectionTarget=entry.protectionTarget,
-                    smartTiming = entry.smartTiming, timing = entry.timing,
+                    smartTiming = entry.smartTiming, customTiming=entry.customTiming,itemPool=entry.itemPool, timing = entry.timing,
                     plannedItemSlot = entry.plannedItemSlot,
                     itemResref = spellData.itemResref,
                     abilityIdx = spellData.abilityIdx,
