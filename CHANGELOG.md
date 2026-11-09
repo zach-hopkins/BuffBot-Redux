@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Add an Important star beside each Order entry. Marking a cast activates Smart
+  Order and prioritizes the shortest remaining starred buff, then other buffs.
+  Stars persist in saves and export format 3; formats 1 and 2 still import.
+- Smart can compare neighboring casts within a caster lane even when other
+  characters' rows separate them. A starred-first objective can trade a little
+  ordinary buff time for more important buff time without exceeding the initial
+  feasible preparation estimate. Spell/summon/item dependencies remain enforced.
+
 - Custom preserves each caster's saved order while aligning shorter lanes near
   completion, rather than issuing short independent buffs immediately. Casters
   still overlap; the whole list is not forced into a serial cross-party order.

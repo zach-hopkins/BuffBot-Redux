@@ -12,13 +12,13 @@ function I.Encode(preset)
         or #preset.requests>BfBot.Plan.MAX_REQUESTS then return nil,'Invalid preset' end
     local mode=preset.orderMode or 'custom'
     if mode~='custom' and mode~='smart' and mode~='long' then return nil,'Invalid order mode' end
-    local lines={'BUFFBOT-PARTY-PLAN\t2','N\t'..hex(preset.name),'M\t'..mode}
+    local lines={'BUFFBOT-PARTY-PLAN\t3','N\t'..hex(preset.name),'M\t'..mode}
     for index,r in ipairs(preset.requests) do
         if not valid(r.group,100) or not valid(r.target,200)
             or r.source~=nil and not valid(r.source,200) or r.var~=nil and not valid(r.var,8) then return nil,'Invalid request' end
         local manual=r.manual or index
         if type(manual)~='number' or manual%1~=0 or manual<1 or manual>1000000 then return nil,'Invalid manual order' end
-        lines[#lines+1]=table.concat({'R',hex(r.group),hex(r.target),hex(r.source),hex(r.var),r.on==0 and '0' or '1',manual},'\t')
+        lines[#lines+1]=table.concat({'R',hex(r.group),hex(r.target),hex(r.source),hex(r.var),r.on==0 and '0' or '1',manual,r.important==1 and '1' or '0'},'\t')
     end
     return table.concat(lines,'\n')..'\n'
 end
@@ -26,17 +26,18 @@ function I.Decode(data)
     if type(data)~='string' or #data>I.maxBytes or data:find('\0',1,true) then return nil,'Invalid plan file' end
     data=data:gsub('\r\n','\n')
     local lines={};for line in data:gmatch('([^\n]*)\n') do lines[#lines+1]=line end
-    local version=lines[1] and lines[1]:match('^BUFFBOT%-PARTY%-PLAN\t([12])$')
+    local version=lines[1] and lines[1]:match('^BUFFBOT%-PARTY%-PLAN\t([123])$')
     if data:sub(-1)~='\n' or not version or not lines[2] then return nil,'Unsupported plan format' end
     local name=lines[2]:match('^N\t(%x+)$');name=name and unhex(name,80)
     if not valid(name,80) then return nil,'Invalid preset name' end
-    local mode=version=='2' and lines[3] and lines[3]:match('^M\t([a-z]+)$') or 'custom'
+    local mode=version~='1' and lines[3] and lines[3]:match('^M\t([a-z]+)$') or 'custom'
     if mode~='custom' and mode~='smart' and mode~='long' then return nil,'Invalid order mode' end
-    if version=='2' and lines[3]~='M\t'..mode then return nil,'Invalid order mode' end
+    if version~='1' and lines[3]~='M\t'..mode then return nil,'Invalid order mode' end
     local preset={name=name,requests={},orderMode=mode}
-    for n=(version=='2' and 4 or 3),#lines do
-        local g,t,s,v,on,manual
-        if version=='2' then g,t,s,v,on,manual=lines[n]:match('^R\t(%x+)\t(%x+)\t(%x*)\t(%x*)\t([01])\t(%d+)$')
+    for n=(version~='1' and 4 or 3),#lines do
+        local g,t,s,v,on,manual,important
+        if version=='3' then g,t,s,v,on,manual,important=lines[n]:match('^R\t(%x+)\t(%x+)\t(%x*)\t(%x*)\t([01])\t(%d+)\t([01])$')
+        elseif version=='2' then g,t,s,v,on,manual=lines[n]:match('^R\t(%x+)\t(%x+)\t(%x*)\t(%x*)\t([01])\t(%d+)$')
         else g,t,s,v,on=lines[n]:match('^R\t(%x+)\t(%x+)\t(%x*)\t(%x*)\t([01])$') end
         manual=tonumber(manual) or #preset.requests+1
         if manual<1 or manual>1000000 then return nil,'Invalid manual order' end
@@ -44,7 +45,7 @@ function I.Decode(data)
         g,t,s,v=unhex(g,100),unhex(t,200),unhex(s,200),unhex(v,8)
         if not valid(g,100) or not valid(t,200) or s==nil or v==nil
             or s~='' and not valid(s,200) or v~='' and not valid(v,8) then return nil,'Invalid request' end
-        preset.requests[#preset.requests+1]={group=g,target=t,source=s~='' and s or nil,var=v~='' and v or nil,on=tonumber(on),manual=manual}
+        preset.requests[#preset.requests+1]={group=g,target=t,source=s~='' and s or nil,var=v~='' and v or nil,on=tonumber(on),manual=manual,important=important=='1' and 1 or 0}
     end
     return preset
 end

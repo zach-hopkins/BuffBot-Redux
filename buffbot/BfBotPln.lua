@@ -301,7 +301,7 @@ function P.CastAges(entries,immediate)
     for i,e in ipairs(entries)do
         local j={id=i,caster=e.caster,actor=e.actor,target=e.request and e.request.target or e.target,
             rank=e.index,release=e.release or 0,aura=e.aura,after={},
-            eager=e.duration==-1 or (e.duration or 0)>=300 or e.eager,
+            eager=e.eager or (not e.important and (e.duration==-1 or (e.duration or 0)>=300)),
             prerequisite=e.prerequisite,affects=e.affects,invisible=e.invisible,party=e.party,
             protection=e.protection,
             item=e.item,
@@ -336,6 +336,8 @@ function P.EstimateRemaining(snapshot,requests,plan,mode,estimate)
             affects=t.ownerPrerequisite and s.actor or r.target,provider=s.providerRequest,
             invisible=m.invisible,party=s.aoe or s.row.isAoE==1 or r.target=='party'}
         e.protection=m.protection
+        e.important=mode=='smart' and r.important==1
+        if e.important then e.eager=false end
         e.item=s.row.kind=='itm' and s.pool or nil
         entries[#entries+1]=e;indices[#entries]=i;byRequest[r]=e
     end end
@@ -379,16 +381,26 @@ local function orderScore(entries)
     -- Loans lock their physical item, not every unrelated casting lane.
     local jobs,positions={},{}
     for i,e in ipairs(entries)do jobs[i]=e;positions[i]=i end
-    local ages=P.CastAges(jobs);local worst,total=math.huge,0
+    local ages,finish=P.CastAges(jobs)
+    local score={math.huge,0,math.huge,0,finish}
     for i,e in ipairs(entries) do
         if e.duration>0 then
             local retained=math.max(0,e.duration-ages[positions[i]]/15)
-            worst=math.min(worst,retained);total=total+retained
+            local k=e.important and 1 or 3
+            score[k]=math.min(score[k],retained);score[k+1]=score[k+1]+retained
         end
     end
-    return worst,total
+    return score
 end
-local function improves(a,b,c,d) return a>c+0.0000001 or math.abs(a-c)<0.0000001 and b>d+0.0000001 end
+local function improves(a,b)
+    for i=1,4 do
+        if a[i]~=b[i] then
+            if a[i]>b[i]+0.0000001 then return true end
+            if b[i]>a[i]+0.0000001 then return false end
+        end
+    end
+    return a[5]<b[5]-0.0000001
+end
 -- Read-only Order estimates; no effect hooks or expiry writes.
 function P.CastingSegments(raw,kind,speed)
     -- CDerivedStats::GetCastingTime, BG2EE 2.6.6. Opcode 189 supports
@@ -545,7 +557,7 @@ function P.SortRequests(snapshot,requests,mode,estimate)
                 actor=d.source and d.source.actor,
                 item=d.source and d.source.row.kind=='itm' and d.source.pool or nil,
                 duration=d.duration or 0,release=math.max(0,t.release or 64),aura=t.aura==true,
-                eager=t.eager==true,
+                eager=t.eager==true and r.important~=1,important=r.important==1,
                 unavailable=not d.source,barrier=d.source and (d.source.itemOwner~=nil or t.barrier==true),
                 prerequisite=t.prerequisite==true,
                 ownerImage=t.ownerPrerequisite==true,provider=d.source and d.source.providerRequest,
@@ -608,8 +620,9 @@ function P.SortRequests(snapshot,requests,mode,estimate)
         end end
         if not changed then break end
     end
-    local function longer(a,b)
+    local function longer(a,b,importantLast)
         if a.unavailable~=b.unavailable then return not a.unavailable end
+        if importantLast and a.important~=b.important then return not a.important end
         local ad=priority[a.request] or 0
         local bd=priority[b.request] or 0
         if ad~=bd then return ad>bd end
@@ -626,14 +639,14 @@ function P.SortRequests(snapshot,requests,mode,estimate)
     for a,targets in pairs(edges) do for b in pairs(targets) do
         incoming[b]=incoming[b] or {};incoming[b][a]=true
     end end
-    local function longFirst(entries)
+    local function longFirst(entries,importantLast)
         local sorted,used={},{}
         for i=1,#entries do
             local best
             for _,e in ipairs(entries) do if not used[e.request] then
                 local ready=true
                 for a in pairs(incoming[e.request] or {}) do if not used[a] then ready=false;break end end
-                if ready and (not best or longer(e,best)) then best=e end
+                if ready and (not best or longer(e,best,importantLast)) then best=e end
             end end
             if not best then return entries end
             sorted[i]=best;used[best.request]=true
@@ -656,22 +669,34 @@ function P.SortRequests(snapshot,requests,mode,estimate)
     end
     local entries={};for i,e in ipairs(baseline) do entries[i]=e end
     if mode=='smart' then
+        local limit=orderScore(baseline)[5]
+        local marked=longFirst(initial,true)
+        local markedList=requestList(marked)
+        marked=describe(markedList,P.Assign(snapshot,markedList))
+        local markedScore=orderScore(marked)
+        if markedScore[5]<=limit+0.0000001 and improves(markedScore,orderScore(entries))then entries=marked end
         -- Start from Long first, then accept only measured model improvements.
         -- Execution phases remain part of scoring, never immovable row anchors.
         for pass=1,8 do
             local changed=false
             for i=1,#entries-1 do
-                local w,t=orderScore(entries)
-                entries[i],entries[i+1]=entries[i+1],entries[i]
-                local nw,nt=orderScore(entries)
-                if respects(entries) and improves(nw,nt,w,t) then changed=true
-                else entries[i],entries[i+1]=entries[i+1],entries[i] end
+                local choices={i+1}
+                for j=i+2,#entries do if entries[j].caster==entries[i].caster then
+                    choices[#choices+1]=j;break
+                end end
+                for _,j in ipairs(choices)do
+                    local before=orderScore(entries)
+                    entries[i],entries[j]=entries[j],entries[i]
+                    local after=orderScore(entries)
+                    if respects(entries) and after[5]<=limit+0.0000001 and improves(after,before) then changed=true
+                    else entries[i],entries[j]=entries[j],entries[i] end
+                end
             end
             if not changed then break end
         end
         local list=requestList(entries);local candidate=describe(list,P.Assign(snapshot,list))
-        local bw,bt=orderScore(baseline);local nw,nt=orderScore(candidate)
-        if not improves(nw,nt,bw,bt) then entries=baseline end
+        local before,after=orderScore(baseline),orderScore(candidate)
+        if after[5]>limit+0.0000001 or not improves(after,before) then entries=baseline end
     end
     local sorted=requestList(entries);local nextPlan=P.Assign(snapshot,sorted);local available={}
     for _,d in ipairs(nextPlan.decisions) do if d.source then available[d.request]=true end end
@@ -829,7 +854,7 @@ function P.ApplyOrder(snapshot,preset,estimate)
     local sourceKey=table.concat(sources,'\n')
     local function signature()
         local parts={preset.orderMode,sourceKey,reference.timingKey or ''}
-        for _,r in ipairs(preset.requests) do parts[#parts+1]=table.concat({r.group,r.target,r.source or '',r.var or '',tostring(r.on),tostring(r.manual)},'|') end
+        for _,r in ipairs(preset.requests) do parts[#parts+1]=table.concat({r.group,r.target,r.source or '',r.var or '',tostring(r.on),tostring(r.manual),tostring(r.important)},'|') end
         return table.concat(parts,'\n')
     end
     if P._orderCache[preset]==signature() then return false end
@@ -1082,7 +1107,8 @@ function P.Validate(value)
                     preset.requests[#preset.requests + 1] = { group = r.group, target = r.target,
                         source = text(r.source, 200) and r.source or nil,
                         var = text(r.var, 8) and r.var or nil, on = r.on == 0 and 0 or 1,
-                        manual=integer(r.manual,1,1000000) and r.manual or #preset.requests+1 }
+                        manual=integer(r.manual,1,1000000) and r.manual or #preset.requests+1,
+                        important=r.important==1 and 1 or 0 }
                 end
             end
             state.presets[i] = preset
@@ -1212,6 +1238,7 @@ function P.BuildQueue(snapshot, requests, orderMode)
                 timing = (orderMode=='smart' or orderMode=='custom') and P.EstimateCast(s) or nil,
                 protectionTarget=orderMode=='smart' and P.DeliversSpellProtection(s.row,r.var) and r.target or nil,
                 isProjectImage = s.row.isProjectImage }
+            if orderMode=='smart' and r.important==1 and queue[#queue].timing then queue[#queue].timing.eager=false end
             positions[r]=#queue
         end
     end

@@ -527,14 +527,14 @@ def test_order_inline_actions_follow_selected_request_after_reordering(dashboard
         setup(s,{request('FIRST','A'),request('LAST','B')})
         bbPartyRequestSelection=1;rowNumber=99
         assert(not U.CanMove(1,-1) and U.CanMove(1,1))
-        U.OrderClick(7) -- Estimated remaining duration is informational.
+        U.OrderClick(8) -- Estimated remaining duration is informational.
         assert(U.preset.requests[1].group=='FIRST')
-        U.OrderClick(9)
+        U.OrderClick(10)
         assert(U.preset.requests[2].group=='FIRST' and bbPartyRequestSelection==2)
         assert(not U.CanMove(2,1))
-        U.OrderClick(8)
+        U.OrderClick(9)
         assert(U.preset.requests[1].group=='FIRST' and bbPartyRequestSelection==1)
-        U.OrderClick(10)
+        U.OrderClick(11)
         return #U.preset.requests==1 and U.preset.requests[1].group=='LAST'
     ''')
 
@@ -545,14 +545,14 @@ def test_caster_dropdown_keeps_auto_and_respects_other_requests_reservations(das
         source(s,'BUFF','A',120,'a',1);source(s,'BUFF','B',60,'b',1)
         source(s,'OTHER','B',60,'b',1)
         setup(s,{request('BUFF','A'),request('OTHER','B','B')})
-        bbPartyRequestSelection=1;U.OrderClick(5)
+        bbPartyRequestSelection=1;U.OrderClick(6)
         assert(U.OrderCaster(1)=='Auto (A)' and U.OrderDuration(1)=='2.0m')
         assert(bbPartyChoices[1].kind=='caster' and bbPartyChoices[1].value==false)
         assert(bbPartyChoices[2].value=='A' and bbPartyChoices[2].kind=='caster')
         assert(bbPartyChoices[3].value=='B' and bbPartyChoices[3].kind=='info')
         bbPartyChoiceSelection=2;U.Choose()
         assert(U.preset.requests[1].source=='A' and U.preset.requests[2].source=='B')
-        bbPartyRequestSelection=1;U.OrderClick(5);bbPartyChoiceSelection=1;U.Choose()
+        bbPartyRequestSelection=1;U.OrderClick(6);bbPartyChoiceSelection=1;U.Choose()
         return U.preset.requests[1].source==nil and U.plan.missing==0
     ''')
 

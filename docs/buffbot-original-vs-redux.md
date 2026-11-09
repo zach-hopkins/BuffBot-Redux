@@ -257,6 +257,6 @@ Custom restores a separately saved manual position on each request; adding a
 request appends to that manual sequence, while moving a row selects Custom.
 Recipients, preferred casters, variants and enabled choices remain shared across
 modes. Undo restores mode and order. Old presets/imports remain Custom; newly
-created presets start in Smart order. Export format 2 saves this information and
+created presets start in Smart order. Export format 3 saves this information and
 still reads format 1. Signature caching avoids re-sorting unchanged plans on
 ordinary redraws; there is no continuous background sort task.

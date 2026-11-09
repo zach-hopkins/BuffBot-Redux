@@ -4362,6 +4362,17 @@ label
  ignoreEvents
  enabled "BfBot.PartyUI.view=='order'"
 }
+button
+{
+ name "rxOrderHeadImportant"
+ area 0 0 100 30
+ enabled "BfBot.PartyUI.view=='order'"
+ bam "BFBSTAR"
+ sequence 0
+ frame 1
+ scaleToClip
+ tooltip lua "BfBot.Plan.Text('Important: Smart protects starred buffs first. Click a row star to turn on Smart Order.')"
+}
 list
 {
  column
@@ -4389,7 +4400,30 @@ list
  }
  column
  {
-  width 4
+  width 3
+  label
+  {
+   area 0 0 -1 46
+   enabled "BfBot.Visual.RequestError(rowNumber)"
+   fill 224 83 63 18
+  }
+  label
+  {
+   area 2 11 24 24
+   bam "BFBSTAR"
+   sequence 0
+   frame lua "BfBot.PartyUI.IsImportant(rowNumber) and 1 or 0"
+   scaleToClip
+  }
+  label
+  {
+   area 0 45 -1 1
+   fill 176 138 74 32
+  }
+ }
+ column
+ {
+  width 3
   label
   {
    area 0 0 -1 46
@@ -4409,7 +4443,7 @@ list
  }
  column
  {
-  width 24
+  width 23
   label
   {
    area 0 0 -1 46
@@ -4495,7 +4529,7 @@ list
  }
  column
  {
-  width 19
+  width 18
   label
   {
    area 0 0 -1 46
@@ -4504,7 +4538,7 @@ list
   }
   label
   {
-   area 6 9 204 28
+   area 6 9 192 28
    enabled "bbPartyRequests[rowNumber]~=nil"
    bam "BFBPLAT"
    sequence lua "BfBot.Visual.SkinIndex()"
@@ -4528,7 +4562,7 @@ list
   }
   label
   {
-   area 52 9 111 28
+   area 52 9 99 28
    text lua "BfBot.Visual.CasterName(rowNumber)"
    text style "bvr_text"
    text point 14
@@ -4537,7 +4571,7 @@ list
   }
   label
   {
-   area 14 9 149 28
+   area 14 9 137 28
    text lua "BfBot.Visual.CasterName(rowNumber)"
    text style "bvr_text"
    text point 14
@@ -4546,7 +4580,7 @@ list
   }
   label
   {
-   area 190 15 16 16
+   area 178 15 16 16
    enabled "bbPartyRequests[rowNumber]~=nil"
    bam "BFBGLYPH"
    sequence lua "BfBot.Visual.Glyph('dropdown')"
@@ -4555,13 +4589,13 @@ list
   }
   label
   {
-   area 6 9 204 1
+   area 6 9 192 1
    enabled "bbPartyRequests[rowNumber]~=nil and BfBot.Visual.RequestError(rowNumber)"
    fill 224 83 63 230
   }
   label
   {
-   area 6 36 204 1
+   area 6 36 192 1
    enabled "bbPartyRequests[rowNumber]~=nil and BfBot.Visual.RequestError(rowNumber)"
    fill 224 83 63 230
   }
@@ -4573,13 +4607,13 @@ list
   }
   label
   {
-   area 209 9 1 28
+   area 197 9 1 28
    enabled "bbPartyRequests[rowNumber]~=nil and BfBot.Visual.RequestError(rowNumber)"
    fill 224 83 63 230
   }
   label
   {
-   area 170 16 14 14
+   area 158 16 14 14
    enabled "bbPartyRequests[rowNumber]~=nil and BfBot.Visual.RequestError(rowNumber)"
    bam "BFBGLYPH"
    sequence lua "BfBot.Visual.Glyph('warning')"
@@ -4749,6 +4783,29 @@ list
  }
  column
  {
+  width 2
+  label
+  {
+   area 0 0 -1 50
+   enabled "BfBot.Visual.RequestError(rowNumber)"
+   fill 224 83 63 18
+  }
+  label
+  {
+   area 2 13 24 24
+   bam "BFBSTAR"
+   sequence 0
+   frame lua "BfBot.PartyUI.IsImportant(rowNumber) and 1 or 0"
+   scaleToClip
+  }
+  label
+  {
+   area 0 49 -1 1
+   fill 176 138 74 32
+  }
+ }
+ column
+ {
   width 3
   label
   {
@@ -4769,7 +4826,7 @@ list
  }
  column
  {
-  width 26
+  width 25
   label
   {
    area 0 0 -1 50
@@ -5051,7 +5108,7 @@ list
  }
  column
  {
-  width 16
+  width 15
   label
   {
    area 0 0 -1 50
@@ -5060,7 +5117,7 @@ list
   }
   label
   {
-   area 244 11 28 28
+   area 226 11 28 28
    bam "BFBACT"
    sequence 1
    frame 0

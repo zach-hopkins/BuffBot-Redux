@@ -154,6 +154,20 @@ ones disappear. Source/recipient/variant choices carry between modes. Manual
 movement selects Custom. Undo restores the previous mode/order without undoing
 later caster choices. An executing run is never browser-sorted or reordered.
 
+Each Order entry has an **Important** star. Marking it activates Smart Order;
+removing it leaves the current mode selected. The first objective becomes the
+minimum remaining duration among finite starred casts, then their total
+remaining duration, then the minimum and total for ordinary casts. Permanent
+and unavailable entries do not distort the finite-duration score. The bounded
+search preserves dependencies and cannot exceed the initial feasible Long
+First preparation estimate. It includes a dependency-aware important-last seed
+and neighboring casts within the same caster lane, even across intervening rows.
+This is a heuristic and a star cannot override required invisibility/summon/item
+ordering. Manual bookmarks and explicit sources are unchanged.
+
+Stars are stored per request/recipient and persist through save validation.
+Plan export format 3 includes the flag; formats 1 and 2 import with no stars.
+
 ## Purposeful item sharing
 
 A unique identified loose daily rechargeable item can supply eligible wearers

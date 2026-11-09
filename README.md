@@ -105,6 +105,8 @@ The active mode is highlighted and saved with the list. Automatic ordering treat
 
 **Est. Left** shows about how much buff time should remain when the whole list finishes. **Expired** means it may run out while other buffs are still casting. This is an estimate: walking, item handoffs and failed casts can change it.
 
+Click the **star beside a cast in Order** to mark it **Important**. This turns on Smart Order and asks it to protect that buff's time first. For example, star each Improved Haste recipient you care about. Filled gold means Important; click again to remove the mark. Stars save with the list and travel with exported plans. You can still return to your saved Custom order.
+
 Smart Order keeps automatic sources stable, creates summons before their spells, and puts Spell Deflection/Turning after incoming buffs they could block. Long buffs start promptly; short buffs can wait to stay useful longer.
 
 ### Set up wake-up buffs

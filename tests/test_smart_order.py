@@ -4,6 +4,37 @@ from test_party_planner import lua
 from test_party_dashboard import dashboard
 
 
+def test_important_cast_gains_time_without_extending_plan_or_changing_source(lua):
+    assert lua.execute('''
+      local s=snapshot();source(s,'HASTE','A',120,'h',1);source(s,'SHORT','A',60,'s',1)
+      local h,short=request('HASTE','A','A'),request('SHORT','A','A');h.manual=1;short.manual=2
+      local function cost()return {release=15}end
+      local normal=P.SortRequests(s,{h,short},'smart',cost)
+      local before,finish=P.EstimateRemaining(s,normal,P.Assign(s,normal),'smart',cost)
+      assert(normal[1]==h and before[1]==114)
+      h.important=1
+      local marked=P.SortRequests(s,{h,short},'smart',cost)
+      local after,newFinish=P.EstimateRemaining(s,marked,P.Assign(s,marked),'smart',cost)
+      return marked[2]==h and after[2]==120 and newFinish==finish and h.source=='A'
+        and after[1]==54
+    ''')
+
+
+def test_important_toggle_selects_smart_and_preserves_custom_positions(dashboard):
+    assert dashboard.execute('''
+      local s=snapshot();source(s,'HASTE','A',120,'h',1);source(s,'SHORT','A',60,'s',1)
+      setup(s,{request('HASTE','A','A'),request('SHORT','A','A')})
+      local h=U.preset.requests[1];local manual=h.manual
+      bbPartyRequestSelection=1;rowNumber=99;U.OrderClick(2)
+      assert(h.important==1 and U.IsOrderMode('smart')and h.manual==manual)
+      assert(U.request==h and U.IsImportant(bbPartyRequestSelection))
+      local persisted=P.Validate(U.state)
+      local found=false;for _,r in ipairs(persisted.presets[1].requests)do if r.group=='HASTE'then found=r.important==1 end end
+      U.OrderClick(2)
+      return found and h.important==0 and U.IsOrderMode('smart')
+    ''')
+
+
 def test_end_duration_uses_concurrent_lanes_and_reports_expired_buffs(lua):
     assert lua.execute('''
       local s=snapshot();source(s,'SHORT','A',4,'s',1);source(s,'LAST','A',60,'l',1)

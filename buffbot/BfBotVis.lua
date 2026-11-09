@@ -595,7 +595,7 @@ end
 function V.OrderClick(column)
     local row=bbPartyRequests[bbPartyRequestSelection]
     if not row then return end
-    if column==2 or column==3 then U.OpenChoices('sources',row.request.group,row.request.var)
+    if column==3 or column==4 then U.OpenChoices('sources',row.request.group,row.request.var)
     else U.OrderClick(column) end
 end
 function V.OpenCaster(index,listName,column,rowIndex)
@@ -603,7 +603,7 @@ function V.OpenCaster(index,listName,column,rowIndex)
     local summary=listName=='bpSummary';local name=summary and 'rxSummaryList' or 'rxOrderList'
     if V.wide then name=name..'Wide' end
     local rh=summary and (V.wide and 42 or 34) or (V.wide and 50 or 46)
-    local fraction=summary and (V.wide and .47 or .43) or .45
+    local fraction=summary and (V.wide and .47 or .43) or .46
     local anchor=V.ListChoiceAnchor(name,rowIndex or index,rh,fraction,summary and .22 or (V.wide and .18 or .19))
     if V.popup=='menu' and U.choiceMode=='caster' and U.choiceRequest==row.request then return V.ClosePopup() end
     U.request=row.request;U.choiceName=row.name;U.choiceRequest,U.choicePreset=row.request,U.preset
@@ -639,13 +639,14 @@ function V.LayoutContent()
     a('rxSummaryHeadRemove',V.w-162,92,94,26)
     a('rxOrderList',68,158,width+28,V.h-254);a('rxOrderListWide',68,158,width+28,V.h-254)
     for i,key in ipairs({'Smart','Long','Custom','Undo'}) do a('rxOrder'..key,68+(i-1)*156,90,148,30) end
-    local ox=68;local orderWidths=wide and {3,3,26,13,18,7,10,2,2,16} or {3,4,24,14,19,7,12,3,3,11}
-    for i,key in ipairs({'Number','Icon','Name','Recipient','Caster','Duration','Remaining','Move'}) do
-        if i~=2 then
+    local ox=68;local orderWidths=wide and {3,2,3,25,13,18,7,10,2,2,15} or {3,3,3,23,14,18,7,12,3,3,11}
+    for i,key in ipairs({'Number','Important','Icon','Name','Recipient','Caster','Duration','Remaining','Move'}) do
+        if i~=3 then
             local hw=width*orderWidths[i]/100-8
             local hx=ox+4
             if key=='Duration' then hw=math.max(hw,88);if not wide then hx=hx-10 end end
-            if key=='Move' then hx=hx+6;hw=width*(orderWidths[8]+orderWidths[9])/100-10 end
+            if key=='Move' then hx=hx+6;hw=width*(orderWidths[9]+orderWidths[10])/100-10 end
+            if key=='Important'then hw=20;hx=ox+2 end
             a('rxOrderHead'..key,hx,130,hw,26)
         end
         ox=ox+width*orderWidths[i]/100

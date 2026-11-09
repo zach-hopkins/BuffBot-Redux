@@ -21,6 +21,17 @@ def test_plan_roundtrip_preserves_name_order_pins_variants_disabled_and_missing_
       return copy.requests[2].target=='name:Missing' and copy.requests[2].on==0 and copy.requests[2].group=='itm:BOOT12:0'
     ''')
 
+
+def test_important_flags_roundtrip_and_old_exports_default_to_normal(plans):
+    assert plans.execute(r'''
+      local p={name='Test',orderMode='smart',requests={request('HASTE','A'),request('SHORT','B')}}
+      p.requests[1].important=1
+      local encoded=assert(I.Encode(p));assert(encoded:find('PLAN\t3',1,true))
+      local copy=assert(I.Decode(encoded));assert(copy.requests[1].important==1 and copy.requests[2].important==0)
+      local old=assert(I.Decode('BUFFBOT-PARTY-PLAN\t2\nN\t41\nM\tsmart\nR\t53\t41\t\t\t1\t1\n'))
+      return old.requests[1].important==0 and old.orderMode=='smart'
+    ''')
+
 @pytest.mark.parametrize('payload',['return os.execute("bad")','BUFFBOT-PARTY-PLAN\t2\nN\t41\n','BUFFBOT-PARTY-PLAN\t1\nN\t4100\n','BUFFBOT-PARTY-PLAN\t1\nN\t4\n','BUFFBOT-PARTY-PLAN\t1\nN\t41\nR\t41\t42\t\t\t7\n'])
 def test_import_rejects_invalid_or_executable_data(plans,payload):
     plans.globals().payload=payload

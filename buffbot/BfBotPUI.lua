@@ -900,6 +900,20 @@ end
 function U.IsOrderMode(mode)
     return U.preset and (U.preset.orderMode or 'custom')==mode or false
 end
+function U.IsImportant(index)
+    local row=bbPartyRequests[index]
+    return row and row.request.important==1 or false
+end
+function U.ToggleImportant(index)
+    if not U.CanSortOrder()then return end
+    local row=bbPartyRequests[index];if not row then return end
+    local request=row.request
+    request.important=request.important==1 and 0 or 1
+    U.request=request;U.undoOrder=nil
+    if request.important==1 then U.preset.orderMode='smart'end
+    U.Refresh(false)
+    bbPartyFeedback=P.Text(request.important==1 and 'Important buff marked; Smart Order active' or 'Important mark removed')
+end
 function U.SortOrder(mode)
     if not U.CanSortOrder() or (mode~='smart' and mode~='long' and mode~='custom') then return end
     P.EnsureManualOrder(U.preset)
@@ -933,10 +947,11 @@ function U.OrderClick(column)
     local row=bbPartyRequests[index]
     if not row then return end
     U.request=row.request
-    if column==5 then U.OpenCaster(index,"bpPlan",.55)
-    elseif column==8 and U.CanMove(index,-1) then U.Move(-1)
-    elseif column==9 and U.CanMove(index,1) then U.Move(1)
-    elseif column==10 then U.Remove() end
+    if column==2 then U.ToggleImportant(index)
+    elseif column==6 then U.OpenCaster(index,"bpPlan",.55)
+    elseif column==9 and U.CanMove(index,-1) then U.Move(-1)
+    elseif column==10 and U.CanMove(index,1) then U.Move(1)
+    elseif column==11 then U.Remove() end
 end
 function U.SummaryClick(column)
     local row=bbPartySummary[bbPartySummarySelection]
