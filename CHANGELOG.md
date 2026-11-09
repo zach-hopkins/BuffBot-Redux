@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v1.10.1-redux-beta.8 — 9 November 2026
 
 - Add an Important star beside each Order entry. Marking a cast activates Smart
   Order and prioritizes the shortest remaining starred buff, then other buffs.

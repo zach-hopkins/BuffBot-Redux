@@ -50,9 +50,9 @@ The six new catalogs began as AI-authored translations. The German catalog has s
 
 ## Installation
 
-1. Download one ZIP from [Releases](https://github.com/zach-hopkins/BuffBot-Redux/releases/tag/v1.10.1-redux-beta.7):
-   - **[Recommended — with LuaJIT](https://github.com/zach-hopkins/BuffBot-Redux/releases/download/v1.10.1-redux-beta.7/buffbot-v1.10.1-redux-beta.7-RECOMMENDED-with-LuaJIT.zip)** — includes the LuaJIT setup helper; installs it before BuffBot.
-   - **[Without LuaJIT](https://github.com/zach-hopkins/BuffBot-Redux/releases/download/v1.10.1-redux-beta.7/buffbot-v1.10.1-redux-beta.7-without-LuaJIT.zip)** — installs BuffBot alone.
+1. Download one ZIP from [Releases](https://github.com/zach-hopkins/BuffBot-Redux/releases/tag/v1.10.1-redux-beta.8):
+   - **[Recommended — with LuaJIT](https://github.com/zach-hopkins/BuffBot-Redux/releases/download/v1.10.1-redux-beta.8/buffbot-v1.10.1-redux-beta.8-RECOMMENDED-with-LuaJIT.zip)** — includes the LuaJIT setup helper; installs it before BuffBot.
+   - **[Without LuaJIT](https://github.com/zach-hopkins/BuffBot-Redux/releases/download/v1.10.1-redux-beta.8/buffbot-v1.10.1-redux-beta.8-without-LuaJIT.zip)** — installs BuffBot alone.
 2. Extract the ZIP into your game folder and run **Install-BuffBot.cmd**.
 3. Start the game through **InfinityLoader.exe**.
 
